@@ -4,6 +4,10 @@ import com.intellij.openapi.ui.Messages
 import com.shazdroid.cmsgen.cmsgenerator.modifier.FileModifier
 import com.shazdroid.cmsgen.cmsgenerator.modifier.JsonFileModifier
 import com.shazdroid.cmsgen.cmsgenerator.storage.FileSelectionService
+import java.awt.Dimension
+import java.awt.GridBagConstraints
+import java.awt.GridBagLayout
+import java.awt.Insets
 import javax.swing.*
 import kotlin.properties.Delegates
 
@@ -21,23 +25,38 @@ class InputContentDialog : DialogWrapper(true) {
         init()  // Call to set up the dialog
     }
 
+
+
     override fun createCenterPanel(): JComponent? {
-        val panel = JPanel()
-        panel.layout = BoxLayout(panel, BoxLayout.Y_AXIS)
+        val panel = JPanel(GridBagLayout())
+        panel.preferredSize = Dimension(400,500)
+        val constraints = GridBagConstraints().apply {
+            fill = GridBagConstraints.HORIZONTAL
+            anchor = GridBagConstraints.WEST
+            weightx = 1.0
+            insets = Insets(5, 5, 5, 5) // Padding around components
+        }
 
+        // Cms Key Label and Input
+        panel.add(JLabel("Cms Key: "), constraints.apply { gridy = 0; gridx = 0 })
         cmsKeyMapperInput = JTextField(20)
-        englishContentInput = JTextArea(5, 20)
-        arabicContentInput = JTextArea(5, 20)
+        panel.add(cmsKeyMapperInput, constraints.apply { gridy = 0; gridx = 1 })
 
-        panel.add(JLabel("Cms Key: "))
-        panel.add(cmsKeyMapperInput)
-        panel.add(JLabel("English Content: "))
-        panel.add(englishContentInput)
-        panel.add(JLabel("Arabic Content: "))
-        panel.add(arabicContentInput)
+        // English Content Label and Input
+        panel.add(JLabel("English Content: "), constraints.apply { gridy = 1; gridx = 0 })
+        englishContentInput = JTextArea(8, 30)
+        panel.add(JScrollPane(englishContentInput), constraints.apply { gridy = 1; gridx = 1 })
+
+        // Arabic Content Label and Input
+        panel.add(JLabel("Arabic Content: "), constraints.apply { gridy = 2; gridx = 0 })
+        arabicContentInput = JTextArea(8, 30)
+        panel.add(JScrollPane(arabicContentInput), constraints.apply { gridy = 2; gridx = 1 })
 
         return panel
     }
+
+
+
 
     override fun doOKAction() {
         val cmsKey = cmsKeyMapperInput.text
@@ -59,7 +78,7 @@ class InputContentDialog : DialogWrapper(true) {
                     )
                 }
 
-                if (item.contains("DefaultAr.json")) {
+                if (item.contains("DefaultArabic.json")) {
                     jsonFileModifier.appendToEnglishJson(
                         item,
                         cmsKey,
