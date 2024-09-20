@@ -1,5 +1,6 @@
 package com.shazdroid.cmsgen.cmsgenerator.modifier
 
+import com.intellij.openapi.ui.Messages
 import java.io.File
 
 class FileModifier {
@@ -8,12 +9,17 @@ class FileModifier {
         return input.replace(Regex("([a-z])([A-Z])"), "$1_$2").uppercase()
     }
 
-    fun appendCmsKeyToFile(filePath: String, cmsKey: String) {
+    fun appendCmsKeyToFile(filePath: String, cmsKey: String) : Boolean {
         // Read the file content
         val file = File(filePath)
         if (!file.exists()) {
+            Messages.showMessageDialog(
+                "File does not exist.",
+                "File not found",
+                Messages.getErrorIcon()
+            )
             println("File does not exist.")
-            return
+            return false
         }
 
         var content = file.readText()
@@ -23,8 +29,13 @@ class FileModifier {
 
         // Check if the companion object already contains the new constant to avoid duplicates
         if (content.contains("const val $keyUpperCase")) {
+            Messages.showMessageDialog(
+                "Key '$keyUpperCase' already exists in the file.",
+                "Duplicate key '$keyUpperCase'",
+                Messages.getErrorIcon()
+            )
             println("Key '$keyUpperCase' already exists in the file.")
-            return
+            return false
         }
 
         // Regex to find the companion object block without modifying the rest of the file
@@ -32,8 +43,13 @@ class FileModifier {
 
         val matchResult = companionObjectPattern.find(content)
         if (matchResult == null) {
+            Messages.showMessageDialog(
+                "Companion object not found in CmsKeyMapper.kt",
+                "File Read'$keyUpperCase'",
+                Messages.getErrorIcon()
+            )
             println("Companion object not found.")
-            return
+            return false
         }
 
         val beforeCompanion = content.substring(0, matchResult.range.first) // Everything before the companion object
@@ -53,5 +69,7 @@ class FileModifier {
         file.writeText(updatedContent)
 
         println("CmsKey '$cmsKey' has been successfully added to the file with proper formatting.")
+
+        return true
     }
 }

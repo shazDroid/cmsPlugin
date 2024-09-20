@@ -27,10 +27,18 @@
 
     </extensions>
 
+
     <actions>
-        <action id="CmsActionPluginId" class="com.shazdroid.cmsgen.cmsgenerator.actions.CmsAction" text="Cms Generator" description="Generate cms keys">
+        <group id="CmsGeneratorGroup" text="CMS Actions" popup="true">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
-        </action>
+            <action id="CmsActionPluginId" class="com.shazdroid.cmsgen.cmsgenerator.actions.CmsAction" text="Cms Generator" description="Generate cms keys">
+                <add-to-group group-id="ToolsMenu" anchor="last"/>
+            </action>
+            <!-- New action for clearing selected files -->
+            <action id="ClearSelectedFilesAction" class="com.shazdroid.cmsgen.cmsgenerator.actions.ClearSelectedFilesAction" text="Clear Selected Files" description="Clear the currently selected files">
+                <add-to-group group-id="ToolsMenu" anchor="after" relative-to-action="CmsActionPluginId"/>
+            </action>
+        </group>
     </actions>
 
     <project-components>

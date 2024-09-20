@@ -39,7 +39,7 @@ class FileChooserDialog(private val project: Project) : DialogWrapper(project) {
         panel.add(file1Label)
 
         // Add file 2 button and label
-        val file2Button = JButton("Choose DefaultAr.json")
+        val file2Button = JButton("Choose DefaultArabic.json")
         file2Button.addActionListener { chooseFile(2) }
         panel.add(file2Button)
         panel.add(file2Label)
@@ -104,7 +104,7 @@ class FileChooserDialog(private val project: Project) : DialogWrapper(project) {
 
         } else {
             Messages.showMessageDialog(
-                "Please select DefaultEn.json, DefaultAr.json, CmsMapperKey.kt to proceed",
+                "Please select DefaultEn.json, DefaultArabic.json, CmsMapperKey.kt to proceed",
                 "Error",
                 Messages.getErrorIcon()
             )

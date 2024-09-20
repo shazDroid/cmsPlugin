@@ -63,31 +63,39 @@ class InputContentDialog : DialogWrapper(true) {
         val engContent = englishContentInput.text
         val arContent = arabicContentInput.text
 
+        var isSuccess = false
+
         if (cmsKey.isNotEmpty() && engContent.isNotEmpty() && arContent.isNotEmpty()) {
             fileService.getSelectedFiles().first()
             fileService.getSelectedFiles().forEachIndexed { index, item ->
                 if (item.contains("CmsKeyMapper.kt")) {
-                    fileModifier.appendCmsKeyToFile(item, cmsKey)
-                }
-
-                if (item.contains("DefaultEn.json")) {
-                    jsonFileModifier.appendToEnglishJson(
-                        item,
-                        cmsKey,
-                        engContent
-                    )
-                }
-
-                if (item.contains("DefaultArabic.json")) {
-                    jsonFileModifier.appendToEnglishJson(
-                        item,
-                        cmsKey,
-                        arContent
-                    )
+                    isSuccess = fileModifier.appendCmsKeyToFile(item, cmsKey)
                 }
             }
 
-            Messages.showMessageDialog("Cms Key Added Successfully", "Success", Messages.getInformationIcon())
+            if (isSuccess) {
+                fileService.getSelectedFiles().forEachIndexed { _, item ->
+                        if (item.contains("DefaultEn.json")) {
+                            jsonFileModifier.appendToEnglishJson(
+                                item,
+                                cmsKey,
+                                engContent
+                            )
+                        }
+
+                        if (item.contains("DefaultArabic.json")) {
+                            jsonFileModifier.appendToArabicJson(
+                                item,
+                                cmsKey,
+                                arContent
+                            )
+                        }
+                }
+            }
+
+            if (isSuccess) {
+                Messages.showMessageDialog("Cms Key Added Successfully", "Success", Messages.getInformationIcon())
+            }
 
             super.doOKAction()  // Close the dialog
         } else {
