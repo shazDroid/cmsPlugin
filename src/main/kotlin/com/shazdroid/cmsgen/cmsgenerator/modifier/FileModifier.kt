@@ -1,6 +1,10 @@
 package com.shazdroid.cmsgen.cmsgenerator.modifier
 
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.VirtualFileManager
 import java.io.File
 
 class FileModifier {
@@ -9,7 +13,7 @@ class FileModifier {
         return input.replace(Regex("([a-z])([A-Z])"), "$1_$2").uppercase()
     }
 
-    fun appendCmsKeyToFile(filePath: String, cmsKey: String) : Boolean {
+    fun appendCmsKeyToFile(filePath: String, cmsKey: String, project: Project?) : Boolean {
         // Read the file content
         val file = File(filePath)
         if (!file.exists()) {
@@ -68,8 +72,23 @@ class FileModifier {
         // Write the modified content back to the file
         file.writeText(updatedContent)
 
+        refreshFile(project, filePath)
+
         println("CmsKey '$cmsKey' has been successfully added to the file with proper formatting.")
 
         return true
+    }
+
+    private fun refreshFile(project: Project?, filePath: String) {
+        if (project == null) return
+
+        val virtualFile: VirtualFile? = VirtualFileManager.getInstance().findFileByUrl("file://$filePath")
+        if (virtualFile != null) {
+            // Refresh the file in the VFS
+            virtualFile.refresh(false, true)
+
+            // Optionally notify the editor to refresh
+            FileEditorManager.getInstance(project).openFile(virtualFile, true)
+        }
     }
 }

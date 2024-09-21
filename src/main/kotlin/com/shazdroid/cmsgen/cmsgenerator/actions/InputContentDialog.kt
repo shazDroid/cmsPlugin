@@ -1,4 +1,5 @@
 import com.intellij.openapi.components.service
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
 import com.shazdroid.cmsgen.cmsgenerator.modifier.FileModifier
@@ -9,9 +10,8 @@ import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets
 import javax.swing.*
-import kotlin.properties.Delegates
 
-class InputContentDialog : DialogWrapper(true) {
+class InputContentDialog(private val project: Project?) : DialogWrapper(true) {
     private lateinit var cmsKeyMapperInput: JTextField
     private lateinit var englishContentInput: JTextArea
     private lateinit var arabicContentInput: JTextArea
@@ -69,7 +69,7 @@ class InputContentDialog : DialogWrapper(true) {
             fileService.getSelectedFiles().first()
             fileService.getSelectedFiles().forEachIndexed { index, item ->
                 if (item.contains("CmsKeyMapper.kt")) {
-                    isSuccess = fileModifier.appendCmsKeyToFile(item, cmsKey.trim())
+                    isSuccess = fileModifier.appendCmsKeyToFile(item, cmsKey.trim(), project)
                 }
             }
 
@@ -79,7 +79,8 @@ class InputContentDialog : DialogWrapper(true) {
                             jsonFileModifier.appendToEnglishJson(
                                 item,
                                 cmsKey,
-                                engContent.trim()
+                                engContent.trim(),
+                                project
                             )
                         }
 
@@ -87,7 +88,8 @@ class InputContentDialog : DialogWrapper(true) {
                             jsonFileModifier.appendToArabicJson(
                                 item,
                                 cmsKey,
-                                arContent.trim()
+                                arContent.trim(),
+                                project
                             )
                         }
                 }
