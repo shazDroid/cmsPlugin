@@ -57,6 +57,12 @@ class FileChooserDialog(private val project: Project) : DialogWrapper(project) {
     private fun chooseFile(fileNumber: Int) {
         val fileChooser = JFileChooser(project.basePath)
 
+        when(fileNumber){
+            1 -> fileChooser.dialogTitle = "Choose DefaultEn.json"
+            2 -> fileChooser.dialogTitle = "Choose DefaultArabic.json file"
+            3 -> fileChooser.dialogTitle = "Choose CmsKeyMapper file"
+        }
+
         // Optionally, restrict file types (e.g., to specific extensions)
         fileChooser.fileFilter = FileNameExtensionFilter("Text Files", "json","kt")
 

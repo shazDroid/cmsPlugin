@@ -8,7 +8,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.shazdroid.cmsgen.cmsgenerator.storage.FileSelectionService
 
-class CmsAction : AnAction() {
+class CmsAction : AnAction("Cms generator") {
     override fun actionPerformed(event: AnActionEvent) {
         val project: Project? = event.project
         // check if files are choosen

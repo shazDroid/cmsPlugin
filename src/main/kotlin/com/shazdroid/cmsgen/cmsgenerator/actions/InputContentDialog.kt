@@ -69,7 +69,7 @@ class InputContentDialog : DialogWrapper(true) {
             fileService.getSelectedFiles().first()
             fileService.getSelectedFiles().forEachIndexed { index, item ->
                 if (item.contains("CmsKeyMapper.kt")) {
-                    isSuccess = fileModifier.appendCmsKeyToFile(item, cmsKey)
+                    isSuccess = fileModifier.appendCmsKeyToFile(item, cmsKey.trim())
                 }
             }
 
@@ -79,7 +79,7 @@ class InputContentDialog : DialogWrapper(true) {
                             jsonFileModifier.appendToEnglishJson(
                                 item,
                                 cmsKey,
-                                engContent
+                                engContent.trim()
                             )
                         }
 
@@ -87,7 +87,7 @@ class InputContentDialog : DialogWrapper(true) {
                             jsonFileModifier.appendToArabicJson(
                                 item,
                                 cmsKey,
-                                arContent
+                                arContent.trim()
                             )
                         }
                 }
