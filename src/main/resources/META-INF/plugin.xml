@@ -33,7 +33,8 @@
         <action id="com.shazdroid.cmsgen.CmsActionPluginId"
                 class="com.shazdroid.cmsgen.cmsgenerator.actions.CmsAction"
                 text="Cms Generator"
-                description="Generate CMS keys">
+                description="Generate CMS keys"
+                icon="com.intellij.icons.ExpUiIcons.Diff.MagicResolveToolbar">
         </action>
 
         <!-- Define Clear Selected Files action -->
@@ -47,7 +48,8 @@
         <action id="com.shazdroid.cmsgen.CmsGeneratorGroup"
                 class="com.shazdroid.cmsgen.cmsgenerator.actions.CmsActionGroup"
                 text="CMS Actions"
-                description="CMS Generator and Clear Actions">
+                description="CMS Generator and Clear Actions"
+                icon="com.intellij.icons.ExpUiIcons.CodeInsight.InlayGlobe">
             <add-to-group group-id="ToolsMenu" anchor="last"/> <!-- Adding the group to the Tools Menu -->
         </action>
 
@@ -55,7 +57,8 @@
         <action id="com.shazdroid.cmsgen.InfoAction"
                 class="com.shazdroid.cmsgen.cmsgenerator.actions.InfoAction"
                 text="Info"
-                description="Display developer information">
+                description="Display developer information"
+                icon="com.intellij.icons.ExpUiIcons.Status.Info">
         </action>
     </actions>
 

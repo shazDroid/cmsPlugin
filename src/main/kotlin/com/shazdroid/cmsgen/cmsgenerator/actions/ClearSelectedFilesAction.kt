@@ -1,10 +1,14 @@
 package com.shazdroid.cmsgen.cmsgenerator.actions
 
+import com.intellij.icons.AllIcons.Icon
+import com.intellij.icons.AllIcons.Icons
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.components.service
 import com.intellij.openapi.ui.Messages
 import com.shazdroid.cmsgen.cmsgenerator.storage.FileSelectionService
+import javax.swing.Icon
+import javax.swing.ImageIcon
 
 class ClearSelectedFilesAction : AnAction("Reset plugin") {
     override fun actionPerformed(e: AnActionEvent) {
