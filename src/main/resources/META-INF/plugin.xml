@@ -32,7 +32,7 @@
         <!-- Define Cms Generator action -->
         <action id="com.shazdroid.cmsgen.CmsActionPluginId"
                 class="com.shazdroid.cmsgen.cmsgenerator.actions.CmsAction"
-                text="Cms Generator"
+                text="CMS Generator"
                 description="Generate CMS keys"
                 icon="com.intellij.icons.ExpUiIcons.Diff.MagicResolveToolbar">
         </action>
@@ -59,6 +59,10 @@
                 text="Info"
                 description="Display developer information"
                 icon="com.intellij.icons.ExpUiIcons.Status.Info">
+        </action>
+
+        <action id="ExtractCmsAction" class="com.shazdroid.cmsgen.cmsgenerator.actions.ExtractCmsAction" text="Extract to CMS String">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
     </actions>
 

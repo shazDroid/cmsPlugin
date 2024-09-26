@@ -6,9 +6,14 @@ import com.intellij.openapi.ui.Messages
 import com.shazdroid.cmsgen.cmsgenerator.modifier.FileModifier
 import com.shazdroid.cmsgen.cmsgenerator.modifier.JsonFileModifier
 import com.shazdroid.cmsgen.cmsgenerator.storage.FileSelectionService
+import java.awt.Color
+import java.awt.Cursor
+import java.awt.Desktop
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import java.awt.event.WindowAdapter
 import java.awt.event.WindowEvent
-import java.io.File
+import java.net.URI
 import javax.swing.*
 import javax.swing.filechooser.FileNameExtensionFilter
 
@@ -23,6 +28,7 @@ class CmsInputActionWindow(private val project: Project?) {
     private lateinit var cancelButton: JButton
     private lateinit var txtCmsKey: JTextField
     private lateinit var addMultipleCheckbox: JCheckBox
+    private lateinit var developerInfo: JLabel
 
     val fileModifier = FileModifier()
     val fileService = service<FileSelectionService>()
@@ -129,11 +135,59 @@ class CmsInputActionWindow(private val project: Project?) {
 
 
         /**
+         * Find and Replace - ACTION
+         *
+         */
+        findAndReplaceButton.addActionListener {
+            Messages.showMessageDialog("Under development...", "Coming soon", Messages.getInformationIcon())
+        }
+
+
+        /**
          * Cancel Button -> ACTION
          */
         cancelButton.addActionListener {
             frame.dispose()
         }
+
+        /**
+         * Developer Info -> ACTION
+         */
+        developerInfo.addMouseListener(object : MouseAdapter(){
+
+            override fun mouseEntered(e: MouseEvent?) {
+                // Change color when mouse enters
+                developerInfo.foreground = Color.BLUE
+                // Change cursor to hand cursor
+                developerInfo.cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+            }
+
+            override fun mouseExited(e: MouseEvent?) {
+                // Reset to original color when mouse exits
+                developerInfo.foreground = Color.WHITE
+                // Reset cursor to default
+                developerInfo.cursor = Cursor.getDefaultCursor()
+            }
+
+            override fun mouseClicked(e: MouseEvent?) {
+                try {
+                    // Open the URL in the system's default browser
+                    val url = URI("https://www.linkedin.com/in/shahbaz-ansari-449014b7/")
+                    if (Desktop.isDesktopSupported()) {
+                        Desktop.getDesktop().browse(url)
+                    } else {
+                        JOptionPane.showMessageDialog(
+                            frame,
+                            "Desktop not supported.",
+                            "Error",
+                            JOptionPane.ERROR_MESSAGE
+                        )
+                    }
+                } catch (ex: Exception) {
+                    ex.printStackTrace()
+                }
+            }
+        })
     }
 
     fun openCsvFileChooser() {

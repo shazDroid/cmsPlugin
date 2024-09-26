@@ -5,7 +5,7 @@ import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 
-class CmsActionGroup : ActionGroup("Cms Generator",true) {
+class CmsActionGroup : ActionGroup("CMS Generator",true) {
 
     override fun getChildren(e: AnActionEvent?): Array<AnAction> {
         // Return the actions that should appear in the dropdown

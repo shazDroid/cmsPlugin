@@ -17,6 +17,9 @@ class JsonFileModifier {
     fun appendToEnglishJson(enFilePath: String, cmsKey: String, enContent: String, project: Project?) {
         val enFile = File(enFilePath)
 
+        val cmsKey = cmsKey.replace(" ","").replace("\"","")
+        val enContent = enContent.replace("\"","")
+
         // Read the existing content
         val enJson: MutableMap<String, String> = if (enFile.exists() && enFile.length() > 0) {
             objectMapper.readValue(enFile)
@@ -35,6 +38,9 @@ class JsonFileModifier {
 
     fun appendToArabicJson(arFilePath: String, cmsKey: String, arContent: String, project: Project?) {
         val arFile = File(arFilePath)
+
+        val cmsKey = cmsKey.replace(" ","")
+        val arContent = arContent.replace("\"","")
 
         // Read the existing content
         val arJson: MutableMap<String, String> = if (arFile.exists() && arFile.length() > 0) {

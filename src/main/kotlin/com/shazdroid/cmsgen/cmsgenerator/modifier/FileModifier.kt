@@ -9,8 +9,23 @@ import java.io.File
 
 class FileModifier {
     // Function to convert camel case to snake case
-    private fun camelToSnakeCase(input: String): String {
-        return input.replace(Regex("([a-z])([A-Z])"), "$1_$2").uppercase()
+    fun camelToSnakeCase(input: String): String {
+        // Trim leading and trailing spaces and remove extra spaces between words
+        val cleanedInput = input.trim().replace(Regex("\\s+"), " ")
+
+        // If the cleaned input contains spaces, treat it as multiple words
+        return if (cleanedInput.contains(" ")) {
+            // Convert multiple words: remove spaces, convert to snake case, and uppercase
+            cleanedInput
+                .replace(" ", "")                           // Remove all spaces
+                .replace(Regex("([a-z])([A-Z])"), "$1_$2")  // Convert camel case to snake case
+                .uppercase()                                // Convert to uppercase
+        } else {
+            // For single word: just convert to uppercase
+            cleanedInput
+                .replace(Regex("([a-z])([A-Z])"), "$1_$2")  // Convert camel case to snake case
+                .uppercase()
+        }
     }
 
     fun appendCmsKeyToFile(filePath: String, cmsKey: String, project: Project?) : Boolean {
@@ -30,6 +45,9 @@ class FileModifier {
 
         // Convert the camelCase cmsKey to SNAKE_CASE
         val keyUpperCase = camelToSnakeCase(cmsKey)
+
+        // Remove any spaces from actual keys
+        val cmsKey = cmsKey.replace(" ", "")
 
         // Check if the companion object already contains the new constant to avoid duplicates
         if (content.contains("const val $keyUpperCase")) {

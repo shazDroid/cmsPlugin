@@ -70,6 +70,13 @@ class CmsInputFromCsvWindow(private val project: Project?, private val file: Fil
         parseButton.addActionListener {
             parseAndAppendToFiles()
         }
+
+        /**
+         * Cancel Button -> ACTION
+         */
+        cancelButton.addActionListener {
+            frame.dispose()
+        }
     }
 
     private fun populateComboBoxesWithKeys(csvFile: File) {
