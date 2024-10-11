@@ -71,24 +71,45 @@ class MainViewModel(
             ?.let { File(it) }
     }
 
+//    fun getKeysFromCmsKeyMapper(): Set<String> {
+//        val file = getCmsKeyMapperFile()
+//        if (file == null || !file.exists()) {
+//            println("CmsKeyMapper.kt file not found.")
+//            return emptySet()
+//        }
+//
+//        val content = file.readText()
+//        val keyPattern = Pattern.compile("""const\s+val\s+\w+\s*=\s*"([^"]+)"""")
+//        val matcher = keyPattern.matcher(content)
+//
+//        val keys = mutableSetOf<String>()
+//        while (matcher.find()) {
+//            val key = matcher.group(1)
+//            keys.add(key)
+//        }
+//
+//        return keys
+//    }
+
     fun getKeysFromCmsKeyMapper(): Set<String> {
-        val file = getCmsKeyMapperFile()
-        if (file == null || !file.exists()) {
-            println("CmsKeyMapper.kt file not found.")
+        val cmsKeyFile = getCmsKeyMapperFile()
+        if (cmsKeyFile == null || !cmsKeyFile.exists()) {
+            println("CmsKeyMapper.kt file not found")
             return emptySet()
         }
 
-        val content = file.readText()
-        val keyPattern = Pattern.compile("""const\s+val\s+\w+\s*=\s*"([^"]+)"""")
-        val matcher = keyPattern.matcher(content)
-
-        val keys = mutableSetOf<String>()
-        while (matcher.find()) {
-            val key = matcher.group(1)
-            keys.add(key)
+        return try {
+            val content = cmsKeyFile.readText()
+            parseKeysFromContent(content)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptySet()
         }
+    }
 
-        return keys
+    private fun parseKeysFromContent(content: String): Set<String> {
+        val regex = Regex("""const\s+val\s+\w+\s*=\s*"([^"]+)"""")
+        return regex.findAll(content).map { it.groupValues[1] }.toSet()
     }
 
     fun getSurroundingLines(

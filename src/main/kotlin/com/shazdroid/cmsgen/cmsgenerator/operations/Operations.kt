@@ -134,44 +134,65 @@ class Operations(
 
 
         // Function to remove duplicates using coroutines
-        fun removeDuplicatesInFile(file: File?, key: String, project: Project) {
+        fun removeDuplicatesInFile(file: File?, key: String, project: Project, viewModel: MainViewModel) {
             if (file == null || !file.exists()) {
                 JOptionPane.showMessageDialog(null, "File not found.")
                 return
             }
 
-            launch {
-                val objectMapper = ObjectMapper().registerModule(KotlinModule())
-                val typeRef = object : TypeReference<MutableMap<String, String>>() {}
-                val content: MutableMap<String, String> = withContext(Dispatchers.IO) {
-                    objectMapper.readValue(file, typeRef)
-                }
+            // Launch a coroutine in the Main scope
+            CoroutineScope(Dispatchers.Main).launch {
+                try {
+                    val objectMapper = ObjectMapper().registerModule(KotlinModule())
+                    val typeRef = object : TypeReference<MutableMap<String, String>>() {}
+                    val content: MutableMap<String, String> = withContext(Dispatchers.IO) {
+                        objectMapper.readValue(file, typeRef)
+                    }
 
-                // Check if the key exists in the map and handle duplicates
-                if (content.containsKey(key)) {
-                    val value = content[key]
-                    val cleanedMap = mutableMapOf<String, String>()
+                    // Check if the key exists in the map
+                    if (content.containsKey(key)) {
+                        val value = content[key]
+                        val cleanedMap = mutableMapOf<String, String>()
 
-                    withContext(Dispatchers.IO) {
-                        val lines = file.readLines()
-                        for (line in lines) {
-                            val matcher = Pattern.compile("\"(.*?)\"\\s*:\\s*\"(.*?)\"").matcher(line)
+                        // Read all lines to process duplicates
+                        val lines = withContext(Dispatchers.IO) { file.readLines() }
+                        val regex = Pattern.compile("\"(.*?)\"\\s*:\\s*\"(.*?)\"")
+
+                        // Track keys and ensure only the last occurrence is kept
+                        val keyOccurrence = mutableMapOf<String, Int>()
+                        for ((index, line) in lines.withIndex()) {
+                            val matcher = regex.matcher(line)
                             if (matcher.find()) {
                                 val lineKey = matcher.group(1)
                                 val lineValue = matcher.group(2)
-                                if (lineKey != key) {
-                                    cleanedMap[lineKey] = lineValue
-                                }
+                                keyOccurrence[lineKey] = index // Store the last occurrence index
                             }
                         }
-                        cleanedMap[key] = value!!
+
+                        // Reconstruct the map with unique keys
+                        for ((lineKey, lastIndex) in keyOccurrence) {
+                            val matcher = regex.matcher(lines[lastIndex])
+                            if (matcher.find()) {
+                                val lineValue = matcher.group(2)
+                                cleanedMap[lineKey] = lineValue
+                            }
+                        }
 
                         // Write the cleaned map back to the file
-                        file.writeText(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(cleanedMap))
-                        viewModel?.refreshFile(project, file.path)
-                    }
+                        withContext(Dispatchers.IO) {
+                            file.writeText(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(cleanedMap))
+                        }
 
-                    JOptionPane.showMessageDialog(null, "Duplicates removed for key: $key.")
+                        // Refresh the file in the view model
+                        viewModel.refreshFile(project, file.path)
+
+                        JOptionPane.showMessageDialog(null, "Duplicates removed for key: $key.")
+                    } else {
+                        JOptionPane.showMessageDialog(null, "Key '$key' not found in the file.")
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    JOptionPane.showMessageDialog(null, "Error removing duplicates for key: $key.")
                 }
             }
         }

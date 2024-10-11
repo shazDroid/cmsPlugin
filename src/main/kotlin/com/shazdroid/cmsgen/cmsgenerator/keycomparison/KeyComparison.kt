@@ -1,9 +1,9 @@
 package com.shazdroid.cmsgen.cmsgenerator.keycomparison
 
-import com.google.gson.Gson
+import com.fasterxml.jackson.core.JsonFactory
+import com.fasterxml.jackson.core.JsonToken
 import com.google.gson.JsonElement
 import com.google.gson.JsonParser
-import com.google.gson.reflect.TypeToken
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.shazdroid.cmsgen.cmsgenerator.custom_guis.KeyColumnRenderer
@@ -19,11 +19,7 @@ import java.awt.Rectangle
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.io.File
-import java.util.regex.Pattern
-import javax.swing.JOptionPane
-import javax.swing.JTable
-import javax.swing.SwingConstants
-import javax.swing.SwingUtilities
+import javax.swing.*
 import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.DefaultTableModel
 
@@ -31,20 +27,13 @@ class KeyComparisonTable(
     private val table: JTable,
     private val enFile: File?,
     private val arFile: File?,
-    private val cmsKeys: Set<String>,
     private val viewModel: MainViewModel,
     private val compareOperations: Operations.CompareOperations,
-    private val project: Project,
-    private val handleBadgeClick: (String, Project, Component) -> Unit,
+    private val project: Project, private val progressBar: JProgressBar,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main + Job())
 ) {
 
     private val keyStatuses: MutableMap<String, KeyStatus> = mutableMapOf()
-
-    // Caching the JSON maps
-    private var enJsonMap: Map<String, String>? = null
-    private var arJsonMap: Map<String, String>? = null
-
 
     init {
         setupTable()
@@ -52,34 +41,86 @@ class KeyComparisonTable(
     }
 
     private fun parseJsonFile(file: File?): Map<String, String> {
-        if (file == null || !file.exists()) return emptyMap()
-        println("Reading file: ${file.path}")
+        if (file == null || !file.exists()) {
+            println("File is null or does not exist: ${file?.path}")
+            return emptyMap()
+        }
+        println("Parsing file: ${file.path}")
         return try {
             val jsonString = file.readText()
-            val type = object : TypeToken<Map<String, String>>() {}.type
-            Gson().fromJson(jsonString, type)
+            val jsonElement = JsonParser.parseString(jsonString)
+            val jsonMap = mutableMapOf<String, String>()
+            extractStringsFromJson(jsonElement, jsonMap)
+            println("Parsed JSON file: ${file.name}, entries: ${jsonMap.size}")
+            jsonMap
         } catch (e: Exception) {
+            println("Exception occurred while parsing the file: ${file.path}")
             e.printStackTrace()
             emptyMap()
         }
     }
 
+    private fun extractStringsFromJson(element: JsonElement, map: MutableMap<String, String>, parentKey: String = "") {
+        when {
+            element.isJsonObject -> {
+                val obj = element.asJsonObject
+                for ((key, value) in obj.entrySet()) {
+                    val newKey = if (parentKey.isEmpty()) key else "$parentKey.$key"
+                    extractStringsFromJson(value, map, newKey)
+                }
+            }
+
+            element.isJsonPrimitive -> {
+                map[parentKey] = element.asString
+            }
+
+            element.isJsonArray -> {
+                val arr = element.asJsonArray
+                for ((index, item) in arr.withIndex()) {
+                    val newKey = "$parentKey[$index]"
+                    extractStringsFromJson(item, map, newKey)
+                }
+            }
+        }
+    }
+
     private fun setupTable(pageSize: Int = 50, pageIndex: Int = 0) {
         scope.launch {
+            // Show the progress bar before starting
+            withContext(Dispatchers.Main) {
+                progressBar.isVisible = true
+                progressBar.value = 0
+            }
+
             val preparedData = withContext(Dispatchers.IO) {
                 prepareTableData(pageSize, pageIndex)
             }
 
             updateTable(preparedData.data, preparedData.keyStatuses)
+
+            // Hide the progress bar after loading
+            withContext(Dispatchers.Main) {
+                progressBar.isVisible = false
+            }
         }
     }
 
     private suspend fun prepareTableData(pageSize: Int, pageIndex: Int): PreparedTableData {
+        try {
+
+
         val enKeyOccurrences = collectKeyOccurrences(enFile)
         val arKeyOccurrences = collectKeyOccurrences(arFile)
 
+            val cmsKeys = withContext(Dispatchers.IO) {
+                viewModel.getKeysFromCmsKeyMapper()
+            }
+
         val allKeys = enKeyOccurrences.keys.union(arKeyOccurrences.keys).union(cmsKeys)
         val data = mutableListOf<Array<Any?>>()
+
+            val totalKeys = allKeys.size
+            var processedKeys = 0
 
         allKeys.forEach { key ->
             val enCount = enKeyOccurrences.getOrDefault(key, 0)
@@ -105,10 +146,22 @@ class KeyComparisonTable(
 
             keyStatuses[key] = status
 
-            val enValue = getLastValueForKey(enFile, key)
-            val arValue = getLastValueForKey(arFile, key)
+            val enValue = withContext(Dispatchers.IO) { getLastValueForKey(enFile, key) }
+            val arValue = withContext(Dispatchers.IO) { getLastValueForKey(arFile, key) }
+
+            println("Key: $key, enValue: $enValue, arValue: $arValue")
 
             data.add(arrayOf(key, enValue, arValue))
+
+            processedKeys++
+
+            val progress = (processedKeys * 100) / totalKeys
+
+            // Update the progress bar on the EDT
+            withContext(Dispatchers.Main) {
+                progressBar.value = progress
+            }
+
         }
 
         // Sorting and pagination
@@ -131,6 +184,15 @@ class KeyComparisonTable(
             keyStatuses = keyStatuses,
             cmsKeys
         )
+
+        } catch (e: Exception) {
+            return PreparedTableData(
+                data = emptyArray(),
+                columnNames = arrayOf("Key", "English Value", "Arabic Value"),
+                keyStatuses = keyStatuses,
+                emptySet()
+            )
+        }
     }
 
 
@@ -138,39 +200,79 @@ class KeyComparisonTable(
         if (file == null || !file.exists()) return emptyMap()
 
         val keyOccurrences = mutableMapOf<String, Int>()
-        val keyPattern = Pattern.compile("\"(.*?)\"\\s*:")
+        val keyStack = mutableListOf<String>()
 
-        file.forEachLine { line ->
-            val matcher = keyPattern.matcher(line)
-            while (matcher.find()) {
-                val key = matcher.group(1)
-                keyOccurrences[key] = keyOccurrences.getOrDefault(key, 0) + 1
+        try {
+            val jsonFactory = JsonFactory()
+            val parser = jsonFactory.createParser(file)
+
+            var currentKey: String? = null
+
+            while (!parser.isClosed) {
+                val token = parser.nextToken()
+                when (token) {
+                    JsonToken.FIELD_NAME -> {
+                        currentKey = parser.currentName
+                        keyStack.add(currentKey)
+
+                        // Build the full key path if needed
+                        // val fullKey = keyStack.joinToString(".")
+                        val fullKey = currentKey
+
+                        // Increment the count for the key
+                        keyOccurrences[fullKey] = keyOccurrences.getOrDefault(fullKey, 0) + 1
+                    }
+
+                    JsonToken.START_OBJECT, JsonToken.START_ARRAY -> {
+                        // No action needed
+                    }
+
+                    JsonToken.END_OBJECT, JsonToken.END_ARRAY -> {
+                        if (keyStack.isNotEmpty()) {
+                            keyStack.removeAt(keyStack.size - 1)
+                        }
+                    }
+
+                    else -> {
+                        // Handle values if needed
+                    }
+                }
             }
+
+            parser.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
+
         return keyOccurrences
     }
 
-    private fun getLastValueForKey(file: File?, key: String): String {
-        val map = when (file) {
-            enFile -> {
-                if (enJsonMap == null) {
-                    enJsonMap = parseJsonFile(enFile)
-                    println("enJsonMap reloaded")
-                }
-                enJsonMap
+    private fun extractKeysFromJson(element: JsonElement, keys: MutableList<String>) {
+        if (element.isJsonObject) {
+            val obj = element.asJsonObject
+            for ((key, value) in obj.entrySet()) {
+                keys.add(key)
+                extractKeysFromJson(value, keys)
             }
-            arFile -> {
-                if (arJsonMap == null) {
-                    arJsonMap = parseJsonFile(arFile)
-                    println("arJsonMap reloaded")
-                }
-                arJsonMap
+        } else if (element.isJsonArray) {
+            val arr = element.asJsonArray
+            for (item in arr) {
+                extractKeysFromJson(item, keys)
             }
-            else -> null
         }
-        val value = map?.get(key) ?: ""
-        println("Retrieved value for key '$key' from ${file?.name}: '$value'")
-        return map?.get(key) ?: ""
+    }
+
+    private fun getLastValueForKey(file: File?, key: String): String {
+        if (file == null || !file.exists()) return ""
+
+        return try {
+            val jsonString = file.readText()
+            val jsonElement = JsonParser.parseString(jsonString)
+            findValueForKey(jsonElement, key) ?: ""
+        } catch (e: Exception) {
+            e.printStackTrace()
+            ""
+        }
     }
 
     private fun findValueForKey(element: JsonElement, key: String): String? {
@@ -178,10 +280,10 @@ class KeyComparisonTable(
             val obj = element.asJsonObject
             if (obj.has(key)) {
                 val valueElement = obj.get(key)
-                if (valueElement.isJsonPrimitive) {
-                    return valueElement.asString
+                return if (valueElement.isJsonPrimitive) {
+                    valueElement.asString
                 } else {
-                    return valueElement.toString()
+                    valueElement.toString()
                 }
             } else {
                 for ((_, value) in obj.entrySet()) {
@@ -269,10 +371,6 @@ class KeyComparisonTable(
         })
     }
 
-    private fun handleBadgeClick(key: String) {
-        val parentComponent = table
-        handleBadgeClick(key, project, parentComponent)
-    }
 
     // Your existing handleBadgeClick function
     fun handleBadgeClick(key: String, project: Project, parentComponent: Component) {
@@ -303,13 +401,17 @@ class KeyComparisonTable(
 
                 if (result == JOptionPane.YES_OPTION) {
                     if (status.isDuplicatedInEn) {
-                        compareOperations.removeDuplicatesInFile(viewModel.getEnglishJsonFile(), key, project)
+                        compareOperations.removeDuplicatesInFile(
+                            viewModel.getEnglishJsonFile(), key, project, viewModel
+                        )
                     }
                     if (status.isDuplicatedInAr) {
-                        compareOperations.removeDuplicatesInFile(viewModel.getArabicJsonFile(), key, project)
+                        compareOperations.removeDuplicatesInFile(viewModel.getArabicJsonFile(), key, project, viewModel)
                     }
                     JOptionPane.showMessageDialog(parentComponent, "Duplicates for key '$key' have been removed.")
-                    refreshTableData()
+                    SwingUtilities.invokeLater {
+                        refreshTableData()
+                    }
                 }
             } else if (status.isMissingInCmsKeyMapper) {
                 val result = JOptionPane.showConfirmDialog(
@@ -326,7 +428,9 @@ class KeyComparisonTable(
                         val operationResult = fileModifier.appendCmsKeyToFile(cmsKeyFilePath, key, project)
                         if (operationResult == FileModifier.FileOperationResult.SUCCESS) {
                             JOptionPane.showMessageDialog(parentComponent, "Key '$key' added to CmsKeyMapper.kt.")
-                            refreshTableData()
+                            SwingUtilities.invokeLater {
+                                refreshTableData()
+                            }
                         } else {
                             JOptionPane.showMessageDialog(
                                 parentComponent,
@@ -376,7 +480,9 @@ class KeyComparisonTable(
 
                     if (enAdded || arAdded) {
                         JOptionPane.showMessageDialog(parentComponent, "Key '$key' added to JSON file(s).")
-                        refreshTableData()
+                        SwingUtilities.invokeLater {
+                            refreshTableData()
+                        }
                     }
                 }
             }
@@ -387,8 +493,6 @@ class KeyComparisonTable(
         println("refreshTableData() called")
         // Clear any cached data
         keyStatuses.clear()
-        enJsonMap = null
-        arJsonMap = null
 
         SwingUtilities.invokeLater {
             setupTable()
