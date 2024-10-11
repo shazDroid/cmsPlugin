@@ -35,9 +35,9 @@ class KeyColumnRenderer(
 
         if (status != null) {
             val (badgeText, badgeColor) = when {
-                status.isDuplicatedInEn || status.isDuplicatedInAr -> "D" to Color.YELLOW
-                status.isMissingInCmsKeyMapper -> "M" to Color.ORANGE
-                status.isMissingInEn || status.isMissingInAr -> "!" to Color.RED
+                status.isDuplicatedInEn || status.isDuplicatedInAr -> "D" to Color(242, 166, 34)
+                status.isMissingInCmsKeyMapper -> "M" to Color(34, 166, 242)
+                status.isMissingInEn || status.isMissingInAr -> "!" to Color(226, 61, 48)
                 else -> "" to null
             }
 

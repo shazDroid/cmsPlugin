@@ -6,6 +6,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.JBColor
 import com.intellij.util.ui.JBUI
+import com.shazdroid.cmsgen.cmsgenerator.custom_guis.KeyColumnRenderer
 import com.shazdroid.cmsgen.cmsgenerator.keycomparison.KeyComparisonTable
 import com.shazdroid.cmsgen.cmsgenerator.modifier.FileModifier
 import com.shazdroid.cmsgen.cmsgenerator.modifier.JsonFileModifier
@@ -28,8 +29,9 @@ import javax.swing.event.DocumentListener
 import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.DefaultTableModel
 
+
 class CmsMainWindow(private val project: Project) : JDialog() {
-    // Add CMS String components
+    // UI Components
     lateinit var mainPanel: JPanel
     lateinit var mainTabLayout: JTabbedPane
     lateinit var txtCmsKey: JTextArea
@@ -48,7 +50,6 @@ class CmsMainWindow(private val project: Project) : JDialog() {
     lateinit var lblEnterLineNo: JLabel
     lateinit var addCmsStringPanel: JPanel
 
-
     // Compare components
     lateinit var comparePanel: JPanel
     lateinit var compareJScrollPane: JScrollPane
@@ -56,14 +57,14 @@ class CmsMainWindow(private val project: Project) : JDialog() {
     lateinit var txtSearchField: JTextField
     lateinit var lblSearch: JLabel
     lateinit var refreshLabel: JLabel
+
     private val uiScope = CoroutineScope(Dispatchers.Main)
 
-
-    val frame = JFrame()
+    private val frame = JFrame()
     private val fileService = service<FileSelectionService>()
     private val fileModifier = FileModifier()
     private val jsonFileModifier = JsonFileModifier()
-    val viewModel = MainViewModel(project)
+    private val viewModel = MainViewModel(project)
 
     private val operations: Lazy<Operations> = lazy {
         Operations(
@@ -75,13 +76,14 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         )
     }
 
-    val compareOperations = operations.value.CompareOperations(comparisonTable)
-    val addOperations = operations.value.AddOperations()
+    private val compareOperations = operations.value.CompareOperations(comparisonTable)
+    private val addOperations = operations.value.AddOperations()
 
+    private val englishEntries = viewModel.readJsonAsList(viewModel.getEnglishJsonFile())
+    private val arabicEntries = viewModel.readJsonAsList(viewModel.getArabicJsonFile())
+    private var isComparisonDataLoaded = false
 
-    val englishEntries = viewModel.readJsonAsList(viewModel.getEnglishJsonFile())
-    val arabicEntries = viewModel.readJsonAsList(viewModel.getArabicJsonFile())
-    var isComparisonDataLoaded = false
+    private var keyComparisonTable: KeyComparisonTable? = null
 
     // Show form
     fun showForm() {
@@ -93,20 +95,34 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         tabOperations()
     }
 
-
     private fun compareOperations() {
         refreshLabel.icon = IconLoader.getIcon("refresh.svg".icon(), javaClass)
         refreshLabel.onClick {
             uiScope.launch {
-                refreshTableData()
+                SwingUtilities.invokeLater {
+                    keyComparisonTable?.refreshTableData()
+                }
             }
         }
     }
 
     private fun loadDataForComparison() {
-
+        val enFile = viewModel.getEnglishJsonFile()
+        val arFile = viewModel.getArabicJsonFile()
+        val cmsKeys = viewModel.getKeysFromCmsKeyMapper()
+        // Create an instance of KeyComparisonTable
+        keyComparisonTable = KeyComparisonTable(
+            table = comparisonTable,
+            enFile = enFile,
+            arFile = arFile,
+            cmsKeys = cmsKeys,
+            viewModel = viewModel,
+            compareOperations = compareOperations,
+            project = project,
+            handleBadgeClick = this::handleBadgeClick
+        )
+        isComparisonDataLoaded = true
     }
-
 
     private fun addIconsToTab() {
         mainTabLayout.setIconAt(0, IconLoader.getIcon("add_cms_string.svg".icon(), javaClass))
@@ -128,7 +144,6 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         populateInsertAtLineCombo()
         compareOperations()
     }
-
 
     private fun tabOperations() {
         mainTabLayout.addChangeListener {
@@ -156,16 +171,11 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         txtEnglishContent.useAndroidStudioDefaultFont()
         txtArabicContent.useAndroidStudioDefaultFont()
 
-
         // Add border
         txtCmsKey.addBorder()
         txtEnglishContent.addBorder()
         txtArabicContent.addBorder()
-
-        // allow only integer
-        // txtInsertAtLine.restrictToIntegerInput()
     }
-
 
     private fun resetInputs() {
         txtCmsKey.text = ""
@@ -175,13 +185,11 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         txtInsertAtLine.text = ""
     }
 
-
     private fun handleClear() {
         clearButton.addActionListener {
             resetInputs()
         }
     }
-
 
     // Ui action listeners
     private fun handleAddCmsString() {
@@ -268,7 +276,6 @@ class CmsMainWindow(private val project: Project) : JDialog() {
                 JOptionPane.showMessageDialog(frame, "The selected file is empty or not found.")
             }
         }
-
     }
 
     // Populate JCombo for file selector for preview 'Insert at line'
@@ -278,21 +285,12 @@ class CmsMainWindow(private val project: Project) : JDialog() {
     }
 
     private fun showInsertAtLineFeature(show: Boolean) {
-        if (show) {
-            txtInsertAtLine.isVisible = true
-            jscrollInsertAtLine.isVisible = true
-            tblInsertAtLine.isVisible = true
-            cmbReferenceFile.isVisible = true
-            txtReferenceFile.isVisible = true
-            lblEnterLineNo.isVisible = true
-        } else {
-            txtInsertAtLine.isVisible = false
-            jscrollInsertAtLine.isVisible = false
-            tblInsertAtLine.isVisible = false
-            cmbReferenceFile.isVisible = false
-            txtReferenceFile.isVisible = false
-            lblEnterLineNo.isVisible = false
-        }
+        txtInsertAtLine.isVisible = show
+        jscrollInsertAtLine.isVisible = show
+        tblInsertAtLine.isVisible = show
+        cmbReferenceFile.isVisible = show
+        txtReferenceFile.isVisible = show
+        lblEnterLineNo.isVisible = show
     }
 
     private fun getSurroundingLines(
@@ -367,73 +365,12 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         }
     }
 
-
-    private fun handleTableClick() {
-//        comparisonTable.addMouseListener(object : MouseAdapter() {
-//            override fun mouseClicked(e: MouseEvent) {
-//                if (e.clickCount == 1 && SwingUtilities.isLeftMouseButton(e)) {
-//                    val row = comparisonTable.rowAtPoint(e.point)
-//                    val column = comparisonTable.columnAtPoint(e.point)
-//
-//                    if (row == -1 || column != 0) return
-//
-//                    val key = comparisonTable.model.getValueAt(row, column) as String
-//                    val badgeBounds = comparisonTable.getCellRect(row, column, false)
-//
-//                    if (isClickOnBadge(badgeBounds, e.point)) {
-//                        handleBadgeClick(key, project, comparisonTable)
-//                    }
-//                }
-//            }
-//        })
-
-        comparisonTable.addMouseListener(object : MouseAdapter() {
-            override fun mouseClicked(e: MouseEvent) {
-                val point = e.point
-                val row = comparisonTable.rowAtPoint(point)
-                val column = comparisonTable.columnAtPoint(point)
-
-                if (row == -1 || column != 0) {
-                    return
-                }
-
-                val cellRect = comparisonTable.getCellRect(row, column, false)
-                val rendererComponent = comparisonTable.getCellRenderer(row, column).getTableCellRendererComponent(
-                    comparisonTable, comparisonTable.getValueAt(row, column), false, false, row, column
-                )
-
-                if (rendererComponent is ) {
-                    val badgeBounds = rendererComponent.getBadgeBounds(row)
-                    if (badgeBounds != null) {
-                        val adjustedBadgeBounds = Rectangle(
-                            cellRect.x + badgeBounds.x,
-                            cellRect.y + badgeBounds.y,
-                            badgeBounds.width,
-                            badgeBounds.height
-                        )
-
-                        if (adjustedBadgeBounds.contains(e.x, e.y)) {
-                            // Badge was clicked
-                            val key = comparisonTable.model.getValueAt(row, column) as? String ?: ""
-                            handleBadgeClick(key, row)
-                        }
-                    }
-                }
-            }
-        })
-    }
-
-    private fun isClickOnBadge(cellRect: Rectangle, clickPoint: Point): Boolean {
-        val badgeX = cellRect.x + cellRect.width - 20 // Adjust as needed based on badge size
-        return clickPoint.x >= badgeX && clickPoint.x <= cellRect.x + cellRect.width &&
-                clickPoint.y >= cellRect.y && clickPoint.y <= cellRect.y + cellRect.height
-    }
-
     @OptIn(DelicateCoroutinesApi::class)
     fun refreshTableData() {
-
+        SwingUtilities.invokeLater {
+            keyComparisonTable?.refreshTableData()
+        }
     }
-
 
     fun handleBadgeClick(key: String, project: Project, parentComponent: Component) {
         ApplicationManager.getApplication().invokeLater {
@@ -469,9 +406,11 @@ class CmsMainWindow(private val project: Project) : JDialog() {
                         compareOperations.removeDuplicatesInFile(viewModel.getArabicJsonFile(), key, project)
                     }
                     JOptionPane.showMessageDialog(parentComponent, "Duplicates for key '$key' have been removed.")
-                    refreshTableData()
+                    SwingUtilities.invokeLater {
+                        keyComparisonTable?.refreshTableData()
+                    }
                 }
-            } else if (!status.inCmsKeyMapper) {
+            } else if (status.isMissingInCmsKeyMapper) {
                 val result = JOptionPane.showConfirmDialog(
                     parentComponent,
                     "Key '$key' is missing in CmsKeyMapper.kt. Do you want to add it?",
@@ -483,43 +422,25 @@ class CmsMainWindow(private val project: Project) : JDialog() {
                     val cmsKeyFilePath = viewModel.getCmsKeyMapperFile()?.path ?: ""
 
                     if (cmsKeyFilePath.isNotEmpty()) {
-                        var success = false
-                        when (fileModifier.appendCmsKeyToFile(cmsKeyFilePath, key, project)) {
-                            FileModifier.FileOperationResult.SUCCESS -> {
-                                success = true
-                            }
-
-                            FileModifier.FileOperationResult.FILE_NOT_FOUND -> {
-                                success = false
-                            }
-
-                            FileModifier.FileOperationResult.DUPLICATE_KEY -> {
-                                success = false
-                            }
-
-                            FileModifier.FileOperationResult.COMPANION_OBJECT_NOT_FOUND -> {
-                                success = false
-                            }
-
-                            FileModifier.FileOperationResult.WRITE_ERROR -> {
-                                success = false
-                            }
-                        }
-                        if (success) {
+                        val operationResult = fileModifier.appendCmsKeyToFile(cmsKeyFilePath, key, project)
+                        if (operationResult == FileModifier.FileOperationResult.SUCCESS) {
                             JOptionPane.showMessageDialog(parentComponent, "Key '$key' added to CmsKeyMapper.kt.")
-                            refreshTableData()
+                            SwingUtilities.invokeLater {
+                                keyComparisonTable?.refreshTableData()
+                            }
+                        } else {
+                            JOptionPane.showMessageDialog(parentComponent, "Error adding key '$key' to CmsKeyMapper.kt.")
                         }
                     } else {
                         JOptionPane.showMessageDialog(parentComponent, "Error: CmsKeyMapper.kt file not found.")
                     }
                 }
-            } else if (!status.inEnglishJson || !status.inArabicJson) {
+            } else if (status.isMissingInEn || status.isMissingInAr) {
                 val missingIn = mutableListOf<String>()
-                if (!status.inEnglishJson) missingIn.add("English")
-                if (!status.inArabicJson) missingIn.add("Arabic")
+                if (status.isMissingInEn) missingIn.add("English")
+                if (status.isMissingInAr) missingIn.add("Arabic")
                 val files = missingIn.joinToString(" and ")
 
-                // Show a dialog asking to add the missing key
                 val result = JOptionPane.showConfirmDialog(
                     parentComponent,
                     "Key '$key' is missing in $files JSON file(s). Do you want to add it?",
@@ -535,7 +456,7 @@ class CmsMainWindow(private val project: Project) : JDialog() {
                     var enAdded = false
                     var arAdded = false
 
-                    if (enFilePath.isNotEmpty() && !status.inEnglishJson) {
+                    if (enFilePath.isNotEmpty() && status.isMissingInEn) {
                         val enValue = JOptionPane.showInputDialog(parentComponent, "Enter English value for '$key':")
                         if (enValue != null) {
                             jsonModifier.appendToEnglishJson(enFilePath, key, enValue, project)
@@ -543,7 +464,7 @@ class CmsMainWindow(private val project: Project) : JDialog() {
                         }
                     }
 
-                    if (arFilePath.isNotEmpty() && !status.inArabicJson) {
+                    if (arFilePath.isNotEmpty() && status.isMissingInAr) {
                         val arValue = JOptionPane.showInputDialog(parentComponent, "Enter Arabic value for '$key':")
                         if (arValue != null) {
                             jsonModifier.appendToArabicJson(arFilePath, key, arValue, project)
@@ -553,34 +474,13 @@ class CmsMainWindow(private val project: Project) : JDialog() {
 
                     if (enAdded || arAdded) {
                         JOptionPane.showMessageDialog(parentComponent, "Key '$key' added to JSON file(s).")
-                        refreshTableData()
+                        SwingUtilities.invokeLater {
+                            keyComparisonTable?.refreshTableData()
+                        }
                     }
                 }
             }
         }
-    }
-
-
-    fun isClickOnBadge(table: JTable, row: Int, column: Int, point: Point): Boolean {
-        // Get the cell rectangle
-        val cellRect = table.getCellRect(row, column, false)
-        // Adjust the point relative to the cell
-        val adjustedPoint = Point(point.x - cellRect.x, point.y - cellRect.y)
-
-        // Get the cell renderer component
-        val renderer = table.getCellRenderer(row, column)
-        val component = renderer.getTableCellRendererComponent(
-            table, table.getValueAt(row, column), false, false, row, column
-        ) as JPanel
-
-        // Get the badge label within the renderer
-        val badgeLabel = (component.getComponent(1) as? JLabel) ?: return false
-
-        // Get the bounds of the badge label
-        val badgeBounds = badgeLabel.bounds
-
-        // Check if the adjusted point is within the badge label bounds
-        return badgeBounds.contains(adjustedPoint)
     }
 
     class CustomTableCellRenderer(private val insertedLineNumber: Int) : DefaultTableCellRenderer() {
@@ -592,7 +492,6 @@ class CmsMainWindow(private val project: Project) : JDialog() {
             val lineNumber = table.getValueAt(row, 0).toString().toInt()
             if (lineNumber == insertedLineNumber) {
                 component.background = JBColor.GREEN
-
             } else {
                 component.background = JBColor.background()
             }
@@ -600,3 +499,4 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         }
     }
 }
+

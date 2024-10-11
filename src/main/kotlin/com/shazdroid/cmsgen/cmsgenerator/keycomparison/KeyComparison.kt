@@ -1,23 +1,31 @@
 package com.shazdroid.cmsgen.cmsgenerator.keycomparison
 
+import com.google.gson.Gson
+import com.google.gson.JsonElement
+import com.google.gson.JsonParser
+import com.google.gson.reflect.TypeToken
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import com.shazdroid.cmsgen.cmsgenerator.custom_guis.KeyColumnRenderer
 import com.shazdroid.cmsgen.cmsgenerator.modifier.FileModifier
 import com.shazdroid.cmsgen.cmsgenerator.modifier.JsonFileModifier
 import com.shazdroid.cmsgen.cmsgenerator.operations.Operations
 import com.shazdroid.cmsgen.cmsgenerator.viewmodel.KeyStatus
 import com.shazdroid.cmsgen.cmsgenerator.viewmodel.MainViewModel
+import com.shazdroid.cmsgen.cmsgenerator.viewmodel.PreparedTableData
 import kotlinx.coroutines.*
-import java.awt.*
+import java.awt.Component
+import java.awt.Rectangle
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.io.File
 import java.util.regex.Pattern
-import javax.swing.*
+import javax.swing.JOptionPane
+import javax.swing.JTable
+import javax.swing.SwingConstants
+import javax.swing.SwingUtilities
 import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.DefaultTableModel
-import javax.swing.table.TableCellRenderer
-
 
 class KeyComparisonTable(
     private val table: JTable,
@@ -27,14 +35,33 @@ class KeyComparisonTable(
     private val viewModel: MainViewModel,
     private val compareOperations: Operations.CompareOperations,
     private val project: Project,
+    private val handleBadgeClick: (String, Project, Component) -> Unit,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main + Job())
 ) {
 
     private val keyStatuses: MutableMap<String, KeyStatus> = mutableMapOf()
 
+    // Caching the JSON maps
+    private var enJsonMap: Map<String, String>? = null
+    private var arJsonMap: Map<String, String>? = null
+
+
     init {
         setupTable()
         addBadgeClickListener()
+    }
+
+    private fun parseJsonFile(file: File?): Map<String, String> {
+        if (file == null || !file.exists()) return emptyMap()
+        println("Reading file: ${file.path}")
+        return try {
+            val jsonString = file.readText()
+            val type = object : TypeToken<Map<String, String>>() {}.type
+            Gson().fromJson(jsonString, type)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyMap()
+        }
     }
 
     private fun setupTable(pageSize: Int = 50, pageIndex: Int = 0) {
@@ -84,7 +111,8 @@ class KeyComparisonTable(
             data.add(arrayOf(key, enValue, arValue))
         }
 
-        val sortedData = data.sortedWith(compareByDescending<Array<Any?>> {
+        // Sorting and pagination
+        val sortedData = data.sortedWith(compareByDescending {
             val key = it[0] as String
             val status = keyStatuses[key] ?: return@compareByDescending false
 
@@ -93,14 +121,18 @@ class KeyComparisonTable(
         })
 
         val paginatedData = sortedData.drop(pageIndex * pageSize).take(pageSize)
-        val columnNames = arrayOf("Key", "English Value", "Arabic Value")
+        val dataArray: Array<Array<Any?>> = paginatedData.toTypedArray()
+
+        viewModel.keyStatuses = keyStatuses
 
         return PreparedTableData(
-            data = paginatedData,
-            columnNames = columnNames,
-            keyStatuses = keyStatuses
+            data = dataArray,
+            columnNames = arrayOf("Key", "English Value", "Arabic Value"),
+            keyStatuses = keyStatuses,
+            cmsKeys
         )
     }
+
 
     private fun collectKeyOccurrences(file: File?): Map<String, Int> {
         if (file == null || !file.exists()) return emptyMap()
@@ -119,16 +151,64 @@ class KeyComparisonTable(
     }
 
     private fun getLastValueForKey(file: File?, key: String): String {
-        // Implement logic to get the last value for a key from the JSON file
-        // For simplicity, return a placeholder or empty string
-        return ""
+        val map = when (file) {
+            enFile -> {
+                if (enJsonMap == null) {
+                    enJsonMap = parseJsonFile(enFile)
+                    println("enJsonMap reloaded")
+                }
+                enJsonMap
+            }
+            arFile -> {
+                if (arJsonMap == null) {
+                    arJsonMap = parseJsonFile(arFile)
+                    println("arJsonMap reloaded")
+                }
+                arJsonMap
+            }
+            else -> null
+        }
+        val value = map?.get(key) ?: ""
+        println("Retrieved value for key '$key' from ${file?.name}: '$value'")
+        return map?.get(key) ?: ""
     }
 
-    private fun updateTable(data: List<Array<Any?>>, keyStatuses: Map<String, KeyStatus>) {
+    private fun findValueForKey(element: JsonElement, key: String): String? {
+        if (element.isJsonObject) {
+            val obj = element.asJsonObject
+            if (obj.has(key)) {
+                val valueElement = obj.get(key)
+                if (valueElement.isJsonPrimitive) {
+                    return valueElement.asString
+                } else {
+                    return valueElement.toString()
+                }
+            } else {
+                for ((_, value) in obj.entrySet()) {
+                    val result = findValueForKey(value, key)
+                    if (result != null) {
+                        return result
+                    }
+                }
+            }
+        } else if (element.isJsonArray) {
+            val arr = element.asJsonArray
+            for (item in arr) {
+                val result = findValueForKey(item, key)
+                if (result != null) {
+                    return result
+                }
+            }
+        }
+        return null
+    }
+
+    private fun updateTable(data: Array<Array<Any?>>, keyStatuses: Map<String, KeyStatus>) {
         SwingUtilities.invokeLater {
+            println("Updating table with new data")
             val columnNames = arrayOf("Key", "English Value", "Arabic Value")
 
-            val model = object : DefaultTableModel(data.toTypedArray(), columnNames) {
+            val model = object : DefaultTableModel(data, columnNames) {
                 override fun isCellEditable(row: Int, column: Int): Boolean = false
                 override fun getColumnClass(columnIndex: Int): Class<*> = String::class.java
             }
@@ -180,9 +260,8 @@ class KeyComparisonTable(
                         )
 
                         if (adjustedBadgeBounds.contains(e.x, e.y)) {
-                            // Badge was clicked
                             val key = table.model.getValueAt(row, column) as? String ?: ""
-                            handleBadgeClick(key, row)
+                            handleBadgeClick(key, project, table)
                         }
                     }
                 }
@@ -190,7 +269,7 @@ class KeyComparisonTable(
         })
     }
 
-    private fun handleBadgeClick(key: String, row: Int) {
+    private fun handleBadgeClick(key: String) {
         val parentComponent = table
         handleBadgeClick(key, project, parentComponent)
     }
@@ -304,132 +383,17 @@ class KeyComparisonTable(
         }
     }
 
-    private fun refreshTableData() {
-        // Re-prepare and update the table data
-        setupTable()
-    }
+    fun refreshTableData() {
+        println("refreshTableData() called")
+        // Clear any cached data
+        keyStatuses.clear()
+        enJsonMap = null
+        arJsonMap = null
 
-    private data class PreparedTableData(
-        val data: List<Array<Any?>>,
-        val columnNames: Array<String>,
-        val keyStatuses: Map<String, KeyStatus>
-    )
-
-    private inner class KeyColumnRenderer(
-        private val keyStatuses: Map<String, KeyStatus>
-    ) : JPanel(), TableCellRenderer {
-
-        private val keyLabel = JLabel()
-        private val badgeLabel = JLabel()
-
-        init {
-            layout = BorderLayout()
-            add(keyLabel, BorderLayout.CENTER)
-            add(badgeLabel, BorderLayout.EAST)
-
-            border = BorderFactory.createEmptyBorder(0, 5, 0, 5)
-            badgeLabel.horizontalAlignment = SwingConstants.RIGHT
-        }
-
-        override fun getTableCellRendererComponent(
-            table: JTable, value: Any?, isSelected: Boolean,
-            hasFocus: Boolean, row: Int, column: Int
-        ): Component {
-            val key = value as? String ?: ""
-            val status = keyStatuses[key]
-
-            keyLabel.text = key
-            keyLabel.font = table.font
-
-            if (status != null) {
-                val (badgeText, badgeColor) = when {
-                    status.isDuplicatedInEn || status.isDuplicatedInAr -> "D" to Color.YELLOW
-                    status.isMissingInCmsKeyMapper -> "M" to Color.ORANGE
-                    status.isMissingInEn || status.isMissingInAr -> "!" to Color.RED
-                    else -> "" to null
-                }
-
-                if (badgeColor != null && badgeText.isNotEmpty()) {
-                    badgeLabel.icon = createBadgeIcon(badgeText, badgeColor, table.font)
-                    badgeLabel.text = ""
-                    badgeLabel.toolTipText = when (badgeText) {
-                        "D" -> "Duplicate key detected"
-                        "M" -> "Key missing in CmsKeyMapper.kt"
-                        "!" -> "Key missing in one of the JSON files"
-                        else -> null
-                    }
-                } else {
-                    badgeLabel.icon = null
-                    badgeLabel.text = ""
-                    badgeLabel.toolTipText = null
-                }
-            } else {
-                badgeLabel.icon = null
-                badgeLabel.text = ""
-                badgeLabel.toolTipText = null
-            }
-
-            // Handle selection background and foreground
-            if (isSelected) {
-                background = table.selectionBackground
-                keyLabel.foreground = table.selectionForeground
-                badgeLabel.foreground = table.selectionForeground
-            } else {
-                background = table.background
-                keyLabel.foreground = table.foreground
-                badgeLabel.foreground = table.foreground
-            }
-
-            return this
-        }
-
-        fun getBadgeBounds(): Rectangle? {
-            badgeLabel.doLayout()
-            badgeLabel.validate()
-            val badgeRect = badgeLabel.bounds
-            return badgeRect
-        }
-
-        private fun createBadgeIcon(text: String, color: Color, font: Font): Icon {
-            return object : Icon {
-                private val diameter: Int
-
-                init {
-                    val adjustedFontSize = 9f
-                    val padding = 4
-                    val fm = Toolkit.getDefaultToolkit().getFontMetrics(font.deriveFont(Font.BOLD, adjustedFontSize))
-                    val textWidth = fm.stringWidth(text)
-                    val textHeight = fm.height
-                    diameter = (maxOf(textWidth, textHeight) + padding).coerceIn(14, 18)
-                }
-
-                override fun getIconWidth(): Int = diameter
-                override fun getIconHeight(): Int = diameter
-
-                override fun paintIcon(c: Component?, g: Graphics?, x: Int, y: Int) {
-                    if (g == null) return
-                    val g2 = g.create() as Graphics2D
-
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-
-                    val badgeX = x
-                    val badgeY = y + ((c?.height ?: 0) - diameter) / 2
-
-                    g2.color = color
-                    g2.fillOval(badgeX, badgeY, diameter, diameter)
-
-                    g2.color = Color.WHITE
-                    g2.font = font.deriveFont(Font.BOLD, 9f)
-                    val fm = g2.fontMetrics
-                    val textWidth = fm.stringWidth(text)
-                    val textX = badgeX + (diameter - textWidth) / 2
-                    val textY = badgeY + (diameter + fm.ascent - fm.descent) / 2 - 1
-
-                    g2.drawString(text, textX, textY)
-                    g2.dispose()
-                }
-            }
+        SwingUtilities.invokeLater {
+            setupTable()
         }
     }
 }
+
 
