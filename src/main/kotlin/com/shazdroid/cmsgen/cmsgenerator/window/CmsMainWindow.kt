@@ -22,8 +22,6 @@ import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
 import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.DefaultTableModel
-import javax.swing.table.TableModel
-import javax.swing.table.TableRowSorter
 
 
 class CmsMainWindow(private val project: Project) : JDialog() {
@@ -322,7 +320,6 @@ class CmsMainWindow(private val project: Project) : JDialog() {
             // Add the new entry at the specified line number
             result.add(arrayOf(lineNumber.toString(), newKey, newValue))
 
-            // Add the two lines below (if they exist)
             if (lineNumber < entries.size) result.add(
                 arrayOf(
                     (lineNumber + 1).toString(),
@@ -365,117 +362,6 @@ class CmsMainWindow(private val project: Project) : JDialog() {
             table.columnModel.getColumn(i).cellRenderer = renderer
         }
     }
-
-//    fun handleBadgeClick(key: String, project: Project, parentComponent: Component) {
-//        ApplicationManager.getApplication().invokeLater {
-//            val status = viewModel.keyStatuses[key]
-//            if (status == null) {
-//                JOptionPane.showMessageDialog(
-//                    parentComponent,
-//                    "Status for key '$key' not found.",
-//                    "Error",
-//                    JOptionPane.ERROR_MESSAGE
-//                )
-//                return@invokeLater
-//            }
-//
-//            if (status.isDuplicatedInEn || status.isDuplicatedInAr) {
-//                val files = mutableListOf<String>()
-//                if (status.isDuplicatedInEn) files.add("English JSON")
-//                if (status.isDuplicatedInAr) files.add("Arabic JSON")
-//                val fileList = files.joinToString(" and ")
-//
-//                val result = JOptionPane.showConfirmDialog(
-//                    parentComponent,
-//                    "Key '$key' is duplicated in $fileList. Do you want to remove duplicates?",
-//                    "Duplicate Key Detected",
-//                    JOptionPane.YES_NO_OPTION
-//                )
-//
-//                if (result == JOptionPane.YES_OPTION) {
-//                    if (status.isDuplicatedInEn) {
-//                        compareOperations.removeDuplicatesInFile(viewModel.getEnglishJsonFile(), key, project)
-//                    }
-//                    if (status.isDuplicatedInAr) {
-//                        compareOperations.removeDuplicatesInFile(viewModel.getArabicJsonFile(), key, project)
-//                    }
-//                    JOptionPane.showMessageDialog(parentComponent, "Duplicates for key '$key' have been removed.")
-//                    SwingUtilities.invokeLater {
-//                        keyComparisonTable?.refreshTableData()
-//                    }
-//                }
-//            } else if (status.isMissingInCmsKeyMapper) {
-//                val result = JOptionPane.showConfirmDialog(
-//                    parentComponent,
-//                    "Key '$key' is missing in CmsKeyMapper.kt. Do you want to add it?",
-//                    "Add Key to CmsKeyMapper.kt",
-//                    JOptionPane.YES_NO_OPTION
-//                )
-//                if (result == JOptionPane.YES_OPTION) {
-//                    val fileModifier = FileModifier()
-//                    val cmsKeyFilePath = viewModel.getCmsKeyMapperFile()?.path ?: ""
-//
-//                    if (cmsKeyFilePath.isNotEmpty()) {
-//                        val operationResult = fileModifier.appendCmsKeyToFile(cmsKeyFilePath, key, project)
-//                        if (operationResult == FileModifier.FileOperationResult.SUCCESS) {
-//                            JOptionPane.showMessageDialog(parentComponent, "Key '$key' added to CmsKeyMapper.kt.")
-//                            SwingUtilities.invokeLater {
-//                                keyComparisonTable?.refreshTableData()
-//                            }
-//                        } else {
-//                            JOptionPane.showMessageDialog(parentComponent, "Error adding key '$key' to CmsKeyMapper.kt.")
-//                        }
-//                    } else {
-//                        JOptionPane.showMessageDialog(parentComponent, "Error: CmsKeyMapper.kt file not found.")
-//                    }
-//                }
-//            } else if (status.isMissingInEn || status.isMissingInAr) {
-//                val missingIn = mutableListOf<String>()
-//                if (status.isMissingInEn) missingIn.add("English")
-//                if (status.isMissingInAr) missingIn.add("Arabic")
-//                val files = missingIn.joinToString(" and ")
-//
-//                val result = JOptionPane.showConfirmDialog(
-//                    parentComponent,
-//                    "Key '$key' is missing in $files JSON file(s). Do you want to add it?",
-//                    "Add Key to JSON File(s)",
-//                    JOptionPane.YES_NO_OPTION
-//                )
-//
-//                if (result == JOptionPane.YES_OPTION) {
-//                    val jsonModifier = JsonFileModifier()
-//                    val enFilePath = viewModel.getEnglishJsonFile()?.path ?: ""
-//                    val arFilePath = viewModel.getArabicJsonFile()?.path ?: ""
-//
-//                    var enAdded = false
-//                    var arAdded = false
-//
-//                    if (enFilePath.isNotEmpty() && status.isMissingInEn) {
-//                        val enValue = JOptionPane.showInputDialog(parentComponent, "Enter English value for '$key':")
-//                        if (enValue != null) {
-//                            jsonModifier.appendToEnglishJson(enFilePath, key, enValue, project)
-//                            enAdded = true
-//                        }
-//                    }
-//
-//                    if (arFilePath.isNotEmpty() && status.isMissingInAr) {
-//                        val arValue = JOptionPane.showInputDialog(parentComponent, "Enter Arabic value for '$key':")
-//                        if (arValue != null) {
-//                            jsonModifier.appendToArabicJson(arFilePath, key, arValue, project)
-//                            arAdded = true
-//                        }
-//                    }
-//
-//                    if (enAdded || arAdded) {
-//                        JOptionPane.showMessageDialog(parentComponent, "Key '$key' added to JSON file(s).")
-//                        SwingUtilities.invokeLater {
-//                            keyComparisonTable?.refreshTableData()
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//    }
 
     class CustomTableCellRenderer(private val insertedLineNumber: Int) : DefaultTableCellRenderer() {
         override fun getTableCellRendererComponent(

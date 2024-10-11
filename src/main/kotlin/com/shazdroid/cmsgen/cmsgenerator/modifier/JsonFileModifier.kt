@@ -27,7 +27,7 @@ class JsonFileModifier {
         val cmsKey = cmsKey.replace(" ", "").replace("\"", "")
         val enContent = enContent.replace("\"", "")
 
-        // Read the existing content
+
         val enJson: MutableMap<String, String> = if (enFile.exists() && enFile.length() > 0) {
             objectMapper.readValue(enFile)
         } else {
@@ -60,10 +60,8 @@ class JsonFileModifier {
             })
         }
 
-        // Convert the list back to a map
         val updatedJson = entries.associate { it.toPair() }
 
-        // Write the updated content back while preserving formatting
         enFile.writeText(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(updatedJson))
         refreshFile(project, enFilePath)
         println("Content successfully updated in DefaultEn.json.")
@@ -81,14 +79,12 @@ class JsonFileModifier {
         val cmsKey = cmsKey.replace(" ", "").replace("\"", "")
         val arContent = arContent.replace("\"", "")
 
-        // Read the existing content
         val arJson: MutableMap<String, String> = if (arFile.exists() && arFile.length() > 0) {
             objectMapper.readValue(arFile)
         } else {
             mutableMapOf()
         }
 
-        // Convert the map to a list of entries to manipulate based on line
         val entries = arJson.entries.toMutableList()
 
         if (insertAtLine > 0 && insertAtLine <= entries.size) {
@@ -102,7 +98,6 @@ class JsonFileModifier {
                 }
             })
         } else {
-            // Append at the end if insertAtLine is 0 or out of bounds
             entries.add(object : MutableMap.MutableEntry<String, String> {
                 override val key = cmsKey
                 override var value = arContent
@@ -114,10 +109,8 @@ class JsonFileModifier {
             })
         }
 
-        // Convert the list back to a map
         val updatedJson = entries.associate { it.toPair() }
 
-        // Write the updated content back while preserving formatting
         arFile.writeText(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(updatedJson))
         refreshFile(project, arFilePath)
         println("Content successfully updated in DefaultAr.json.")
@@ -128,10 +121,7 @@ class JsonFileModifier {
 
         val virtualFile: VirtualFile? = VirtualFileManager.getInstance().findFileByUrl("file://$filePath")
         if (virtualFile != null) {
-            // Refresh the file in the VFS
             virtualFile.refresh(false, true)
-
-            // Optionally notify the editor to refresh
             FileEditorManager.getInstance(project).openFile(virtualFile, true)
         }
     }

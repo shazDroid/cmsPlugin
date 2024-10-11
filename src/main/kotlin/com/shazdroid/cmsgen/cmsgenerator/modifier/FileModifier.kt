@@ -97,10 +97,7 @@ class FileModifier {
 
         val virtualFile: VirtualFile? = VirtualFileManager.getInstance().findFileByUrl("file://$filePath")
         if (virtualFile != null) {
-            // Refresh the file in the VFS
             virtualFile.refresh(false, true)
-
-            // Optionally notify the editor to refresh
             FileEditorManager.getInstance(project).openFile(virtualFile, true)
         }
     }

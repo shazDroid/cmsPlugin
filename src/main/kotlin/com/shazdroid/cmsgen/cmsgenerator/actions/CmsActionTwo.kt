@@ -14,11 +14,6 @@ class CmsActionTwo : AnAction("CMS generator 2.0") {
         val fileSelectionService = service<FileSelectionService>()
 
         if (fileSelectionService.getSelectedFiles().isNotEmpty()){
-            /* val inputDialog = InputContentDialog(project)
-             inputDialog.show()
-             return*/
-
-            // val cmsInputActionWindow = CmsInputActionWindow(project)
             val cmsMainWindow = project?.let { CmsMainWindow(it) }
             cmsMainWindow?.showForm()
             return

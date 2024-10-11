@@ -31,11 +31,6 @@ class ClearSelectedFilesAction : AnAction("Reset plugin") {
             Messages.showInfoMessage("Operation cancelled.", "Cancelled")
         }
 
-//        Messages.showMessageDialog(
-//            "Plugin has been reset, now you can select files again\nNote: CmsKeyMapper, DefaultEn, DefaultArabic files are not affected by these action.",
-//            "Clear Files Selection",
-//            Messages.getInformationIcon()
-//        )
     }
 
 

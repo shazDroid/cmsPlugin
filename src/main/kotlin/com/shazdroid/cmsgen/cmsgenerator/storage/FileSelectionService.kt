@@ -30,7 +30,7 @@ class FileSelectionService : PersistentStateComponent<FileSelectionState> {
 
     fun clearSelectedFiles() {
         state.selectedFiles = emptyList() // Clear in-memory state
-        // The state will be saved automatically when the state is modified
+
     }
 }
 

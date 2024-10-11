@@ -100,8 +100,6 @@ class Operations(
         override val coroutineContext: CoroutineContext
             get() = Dispatchers.Main + job
 
-
-        // Function to remove duplicates using coroutines
         fun removeDuplicatesInFile(
             file: File?,
             key: String,
@@ -113,14 +111,11 @@ class Operations(
                 return
             }
 
-            // Launch a coroutine in the Main scope
             CoroutineScope(Dispatchers.Main).launch {
                 try {
-                    // Read all lines from the file
                     val lines = withContext(Dispatchers.IO) { file.readLines() }
                     val regex = Pattern.compile("\"(.*?)\"\\s*:\\s*\"(.*?)\"")
 
-                    // Track all occurrences of the specified key
                     val occurrenceIndices = mutableListOf<Int>()
                     for ((index, line) in lines.withIndex()) {
                         val matcher = regex.matcher(line)
@@ -147,12 +142,10 @@ class Operations(
                         cleanedLines.removeAt(index)
                     }
 
-                    // Write the cleaned lines back to the file
                     withContext(Dispatchers.IO) {
                         file.writeText(cleanedLines.joinToString("\n"))
                     }
 
-                    // Refresh the file in the view model to update the UI
                     viewModel.refreshFile(project, file.path)
                 } catch (e: Exception) {
                     e.printStackTrace()

@@ -32,19 +32,19 @@ class FileChooserDialog(private val project: Project) : DialogWrapper(project) {
     override fun createCenterPanel(): JComponent? {
         val panel = JPanel(GridLayout(4, 2))
 
-        // Add file 1 button and label
+        // Add file 1 button
         val file1Button = JButton("Choose DefaultEn.json")
         file1Button.addActionListener { chooseFile(1) }
         panel.add(file1Button)
         panel.add(file1Label)
 
-        // Add file 2 button and label
+        // Add file 2 button
         val file2Button = JButton("Choose DefaultArabic.json")
         file2Button.addActionListener { chooseFile(2) }
         panel.add(file2Button)
         panel.add(file2Label)
 
-        // Add file 3 button and label
+        // Add file 3 button
         val file3Button = JButton("Choose CmsKeyMapper file")
         file3Button.addActionListener { chooseFile(3) }
         panel.add(file3Button)
@@ -53,7 +53,6 @@ class FileChooserDialog(private val project: Project) : DialogWrapper(project) {
         return panel
     }
 
-    // Function to choose a file based on button number
     private fun chooseFile(fileNumber: Int) {
         val fileChooser = JFileChooser(project.basePath)
 
@@ -63,10 +62,8 @@ class FileChooserDialog(private val project: Project) : DialogWrapper(project) {
             3 -> fileChooser.dialogTitle = "Choose CmsKeyMapper file"
         }
 
-        // Optionally, restrict file types (e.g., to specific extensions)
         fileChooser.fileFilter = FileNameExtensionFilter("Text Files", "json","kt")
 
-        // Open file chooser dialog
         val result = fileChooser.showOpenDialog(null)
         if (result == JFileChooser.APPROVE_OPTION) {
             val selectedFile = fileChooser.selectedFile
@@ -92,11 +89,9 @@ class FileChooserDialog(private val project: Project) : DialogWrapper(project) {
         fileSelectionService.storeSelectedFiles(filePaths)
     }
 
-    // Handle OK button click (collect the selected files)
     override fun doOKAction() {
         if (selectedFile1 != null && selectedFile2 != null && selectedFile3 != null) {
 
-            // Store the selected files' absolute paths
             storeSelectedFiles(listOf(selectedFile1!!.absolutePath, selectedFile2!!.absolutePath, selectedFile3!!.absolutePath))
 
             Messages.showMessageDialog(
@@ -105,7 +100,6 @@ class FileChooserDialog(private val project: Project) : DialogWrapper(project) {
                 Messages.getInformationIcon()
             )
 
-            // Close the dialog after files are stored
             super.doOKAction()
 
         } else {

@@ -22,11 +22,9 @@ class MainToolbarWindow : ToolWindowFactory {
     }
 
     private fun adjustPanelSize(panel: JPanel) {
-        // Adjust the preferred size dynamically based on the content
         val preferredWidth = panel.preferredSize.width
-        val minimumWidth = 300 // You can set a minimum width if needed
+        val minimumWidth = 300
 
-        // Set the preferred size to make sure the panel grows with the content
         panel.preferredSize = panel.preferredSize.apply {
             width = preferredWidth.coerceAtLeast(minimumWidth)
         }

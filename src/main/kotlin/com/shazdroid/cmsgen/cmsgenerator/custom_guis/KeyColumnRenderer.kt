@@ -12,13 +12,9 @@ class KeyColumnRenderer(
     private val keyStatuses: Map<String, KeyStatus>
 ) : DefaultTableCellRenderer(), TableCellRenderer {
 
-    // Mutable property to hold the current search text
     var searchText: String = ""
         set(value) {
             field = value
-            // Optionally, trigger a repaint when searchText changes
-            // This ensures that highlights are updated immediately
-            // Note: Ensure this is called on the Event Dispatch Thread (EDT)
             SwingUtilities.invokeLater { this.parent?.repaint() }
         }
 
@@ -51,16 +47,11 @@ class KeyColumnRenderer(
         row: Int,
         column: Int
     ): Component {
-        // Call the superclass method to get the default rendering
         val label = super.getTableCellRendererComponent(
             table, value, isSelected, hasFocus, row, column
         ) as JLabel
-
         val key = value as? String ?: ""
-
-        // Set the text to just the key; badge will be drawn separately
         label.text = key
-
         return label
     }
 
@@ -82,7 +73,6 @@ class KeyColumnRenderer(
             if (badgeText.isNotEmpty() && badgeColor != null) {
                 val g2 = g as Graphics2D
 
-                // Enable anti-aliasing for smoother graphics
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
 
                 val cellRect = label.getBounds()
@@ -108,7 +98,6 @@ class KeyColumnRenderer(
 
                 g2.drawString(badgeText, textX, textY)
 
-                // Optional: Logging for debugging
                 println("Drawing badge for key: $key at ($badgeX, $badgeY)")
             }
         }

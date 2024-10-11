@@ -79,7 +79,6 @@ class KeyComparisonTable(
                     rowSorter.setRowFilter(RowFilter.regexFilter("(?i)$text", 0, 1, 2))
                 }
 
-                // Optionally, show a message if no rows match
                 if (rowSorter.rowFilter != null && table.rowCount == 0 && text.isNotEmpty()) {
                     JOptionPane.showMessageDialog(
                         table,
@@ -90,50 +89,6 @@ class KeyComparisonTable(
                 }
             }
         })
-    }
-
-    private fun parseJsonFile(file: File?): Map<String, String> {
-        if (file == null || !file.exists()) {
-            println("File is null or does not exist: ${file?.path}")
-            return emptyMap()
-        }
-        println("Parsing file: ${file.path}")
-        return try {
-            val jsonString = file.readText()
-            val jsonElement = JsonParser.parseString(jsonString)
-            val jsonMap = mutableMapOf<String, String>()
-            extractStringsFromJson(jsonElement, jsonMap)
-            println("Parsed JSON file: ${file.name}, entries: ${jsonMap.size}")
-            jsonMap
-        } catch (e: Exception) {
-            println("Exception occurred while parsing the file: ${file.path}")
-            e.printStackTrace()
-            emptyMap()
-        }
-    }
-
-    private fun extractStringsFromJson(element: JsonElement, map: MutableMap<String, String>, parentKey: String = "") {
-        when {
-            element.isJsonObject -> {
-                val obj = element.asJsonObject
-                for ((key, value) in obj.entrySet()) {
-                    val newKey = if (parentKey.isEmpty()) key else "$parentKey.$key"
-                    extractStringsFromJson(value, map, newKey)
-                }
-            }
-
-            element.isJsonPrimitive -> {
-                map[parentKey] = element.asString
-            }
-
-            element.isJsonArray -> {
-                val arr = element.asJsonArray
-                for ((index, item) in arr.withIndex()) {
-                    val newKey = "$parentKey[$index]"
-                    extractStringsFromJson(item, map, newKey)
-                }
-            }
-        }
     }
 
     private fun setupTable(pageSize: Int = 50, pageIndex: Int = 0) {
@@ -267,8 +222,6 @@ class KeyComparisonTable(
                         currentKey = parser.currentName
                         keyStack.add(currentKey)
 
-                        // Build the full key path if needed
-                        // val fullKey = keyStack.joinToString(".")
                         val fullKey = currentKey
 
                         // Increment the count for the key
@@ -276,7 +229,7 @@ class KeyComparisonTable(
                     }
 
                     JsonToken.START_OBJECT, JsonToken.START_ARRAY -> {
-                        // No action needed
+
                     }
 
                     JsonToken.END_OBJECT, JsonToken.END_ARRAY -> {
@@ -286,7 +239,7 @@ class KeyComparisonTable(
                     }
 
                     else -> {
-                        // Handle values if needed
+
                     }
                 }
             }
@@ -297,21 +250,6 @@ class KeyComparisonTable(
         }
 
         return keyOccurrences
-    }
-
-    private fun extractKeysFromJson(element: JsonElement, keys: MutableList<String>) {
-        if (element.isJsonObject) {
-            val obj = element.asJsonObject
-            for ((key, value) in obj.entrySet()) {
-                keys.add(key)
-                extractKeysFromJson(value, keys)
-            }
-        } else if (element.isJsonArray) {
-            val arr = element.asJsonArray
-            for (item in arr) {
-                extractKeysFromJson(item, keys)
-            }
-        }
     }
 
     private fun getLastValueForKey(file: File?, key: String): String {
@@ -378,7 +316,6 @@ class KeyComparisonTable(
             val keyRenderer = KeyColumnRenderer(keyStatuses)
             table.columnModel.getColumn(0).cellRenderer = keyRenderer
 
-            // Center-align the other columns
             val centerRenderer = DefaultTableCellRenderer().apply {
                 horizontalAlignment = SwingConstants.CENTER
             }
@@ -387,7 +324,6 @@ class KeyComparisonTable(
 
             table.autoResizeMode = JTable.AUTO_RESIZE_ALL_COLUMNS
 
-            // Retrieve the renderer instance
             val keyRendererSearch = table.getColumnModel().getColumn(0).cellRenderer as? KeyColumnRenderer
                 ?: throw IllegalStateException("KeyColumnRenderer not assigned to the 'Key' column.")
 
@@ -415,20 +351,6 @@ class KeyComparisonTable(
                 )
 
                 if (rendererComponent is KeyColumnRenderer) {
-//                    val badgeBounds = rendererComponent.getBadgeBounds()
-//                    if (badgeBounds != null) {
-//                        val adjustedBadgeBounds = Rectangle(
-//                            cellRect.x + badgeBounds.x,
-//                            cellRect.y + badgeBounds.y,
-//                            badgeBounds.width,
-//                            badgeBounds.height
-//                        )
-//
-//                        if (adjustedBadgeBounds.contains(e.x, e.y)) {
-//                            val key = table.model.getValueAt(row, column) as? String ?: ""
-//                            handleBadgeClick(key, project, table)
-//                        }
-//                    }
 
                     // Calculate badge bounds
                     val badgeBounds = rendererComponent.calculateBadgeBounds(cellRect)
@@ -443,7 +365,6 @@ class KeyComparisonTable(
                     )
                     println("Adjusted badge bounds: $adjustedBadgeBounds")
 
-                    // Check if the click is within the badge bounds
                     if (adjustedBadgeBounds.contains(e.x, e.y)) {
                         val key = table.model.getValueAt(row, column) as? String ?: ""
                         println("Badge clicked for key: $key")

@@ -1,8 +1,6 @@
 package com.shazdroid.cmsgen.cmsgenerator.viewmodel
 
-import com.fasterxml.jackson.core.JsonToken
 import com.fasterxml.jackson.core.type.TypeReference
-import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.intellij.openapi.application.CachedSingletonsRegistry
@@ -16,10 +14,7 @@ import com.shazdroid.cmsgen.cmsgenerator.modifier.JsonFileModifier
 import com.shazdroid.cmsgen.cmsgenerator.operations.Operations
 import com.shazdroid.cmsgen.cmsgenerator.storage.FileSelectionService
 import java.io.File
-import java.io.IOException
 import java.util.function.Supplier
-import java.util.regex.Pattern
-import javax.swing.JOptionPane
 
 
 class MainViewModel(
@@ -51,7 +46,6 @@ class MainViewModel(
             // Refresh the file in the VFS
             virtualFile.refresh(false, true)
 
-            // Optionally notify the editor to refresh
             FileEditorManager.getInstance(project).openFile(virtualFile, true)
         }
     }
@@ -70,26 +64,6 @@ class MainViewModel(
         return fileServiceSupplier.get().getSelectedFiles().firstOrNull { it.contains("CmsKeyMapper.kt") }
             ?.let { File(it) }
     }
-
-//    fun getKeysFromCmsKeyMapper(): Set<String> {
-//        val file = getCmsKeyMapperFile()
-//        if (file == null || !file.exists()) {
-//            println("CmsKeyMapper.kt file not found.")
-//            return emptySet()
-//        }
-//
-//        val content = file.readText()
-//        val keyPattern = Pattern.compile("""const\s+val\s+\w+\s*=\s*"([^"]+)"""")
-//        val matcher = keyPattern.matcher(content)
-//
-//        val keys = mutableSetOf<String>()
-//        while (matcher.find()) {
-//            val key = matcher.group(1)
-//            keys.add(key)
-//        }
-//
-//        return keys
-//    }
 
     fun getKeysFromCmsKeyMapper(): Set<String> {
         val cmsKeyFile = getCmsKeyMapperFile()
@@ -110,45 +84,6 @@ class MainViewModel(
     private fun parseKeysFromContent(content: String): Set<String> {
         val regex = Regex("""const\s+val\s+\w+\s*=\s*"([^"]+)"""")
         return regex.findAll(content).map { it.groupValues[1] }.toSet()
-    }
-
-    fun getSurroundingLines(
-        entries: List<Pair<String, String>>,
-        lineNumber: Int,
-        newKey: String,
-        newEnglishValue: String,
-        newArabicValue: String
-    ): List<Array<Any>> {
-        val result = mutableListOf<Array<Any>>()
-
-        // Add the two lines above (if they exist) with line numbers
-        if (lineNumber > 2) result.add(
-            arrayOf(
-                lineNumber - 2, entries[lineNumber - 3].first, entries[lineNumber - 3].second, ""
-            )
-        )
-        if (lineNumber > 1) result.add(
-            arrayOf(
-                lineNumber - 1, entries[lineNumber - 2].first, entries[lineNumber - 2].second, ""
-            )
-        )
-
-        // Add the new entry at the specified line number
-        result.add(arrayOf(lineNumber, newKey, newEnglishValue, newArabicValue))
-
-        // Add the two lines below (if they exist) with line numbers
-        if (lineNumber < entries.size) result.add(
-            arrayOf(
-                lineNumber + 1, entries[lineNumber - 1].first, entries[lineNumber - 1].second, ""
-            )
-        )
-        if (lineNumber < entries.size - 1) result.add(
-            arrayOf(
-                lineNumber + 2, entries[lineNumber].first, entries[lineNumber].second, ""
-            )
-        )
-
-        return result
     }
 
 
