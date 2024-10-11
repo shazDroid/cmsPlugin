@@ -14,6 +14,9 @@ class KeyColumnRenderer(
     private val keyLabel = JLabel()
     private val badgeLabel = JLabel()
 
+    private val badgeDiameter = 12
+    private val badgePadding = 5
+
     init {
         layout = BorderLayout()
         add(keyLabel, BorderLayout.CENTER)
@@ -21,6 +24,12 @@ class KeyColumnRenderer(
 
         border = BorderFactory.createEmptyBorder(0, 5, 0, 5)
         badgeLabel.horizontalAlignment = SwingConstants.RIGHT
+    }
+
+    fun calculateBadgeBounds(cellRect: Rectangle): Rectangle {
+        val badgeX = cellRect.width - badgePadding - badgeDiameter
+        val badgeY = (cellRect.height - badgeDiameter) / 2
+        return Rectangle(badgeX, badgeY, badgeDiameter, badgeDiameter)
     }
 
     override fun getTableCellRendererComponent(

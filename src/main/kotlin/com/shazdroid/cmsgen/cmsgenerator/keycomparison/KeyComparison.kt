@@ -355,19 +355,39 @@ class KeyComparisonTable(
                 )
 
                 if (rendererComponent is KeyColumnRenderer) {
-                    val badgeBounds = rendererComponent.getBadgeBounds()
-                    if (badgeBounds != null) {
-                        val adjustedBadgeBounds = Rectangle(
-                            cellRect.x + badgeBounds.x,
-                            cellRect.y + badgeBounds.y,
-                            badgeBounds.width,
-                            badgeBounds.height
-                        )
+//                    val badgeBounds = rendererComponent.getBadgeBounds()
+//                    if (badgeBounds != null) {
+//                        val adjustedBadgeBounds = Rectangle(
+//                            cellRect.x + badgeBounds.x,
+//                            cellRect.y + badgeBounds.y,
+//                            badgeBounds.width,
+//                            badgeBounds.height
+//                        )
+//
+//                        if (adjustedBadgeBounds.contains(e.x, e.y)) {
+//                            val key = table.model.getValueAt(row, column) as? String ?: ""
+//                            handleBadgeClick(key, project, table)
+//                        }
+//                    }
 
-                        if (adjustedBadgeBounds.contains(e.x, e.y)) {
-                            val key = table.model.getValueAt(row, column) as? String ?: ""
-                            handleBadgeClick(key, project, table)
-                        }
+                    // Calculate badge bounds
+                    val badgeBounds = rendererComponent.calculateBadgeBounds(cellRect)
+                    println("Badge bounds for row $row: $badgeBounds")
+
+                    // Adjust badge bounds relative to table coordinates
+                    val adjustedBadgeBounds = Rectangle(
+                        cellRect.x + badgeBounds.x,
+                        cellRect.y + badgeBounds.y,
+                        badgeBounds.width,
+                        badgeBounds.height
+                    )
+                    println("Adjusted badge bounds: $adjustedBadgeBounds")
+
+                    // Check if the click is within the badge bounds
+                    if (adjustedBadgeBounds.contains(e.x, e.y)) {
+                        val key = table.model.getValueAt(row, column) as? String ?: ""
+                        println("Badge clicked for key: $key")
+                        handleBadgeClick(key, project, table)
                     }
                 }
             }
