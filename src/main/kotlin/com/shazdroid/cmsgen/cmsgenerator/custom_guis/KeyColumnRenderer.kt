@@ -97,7 +97,7 @@ class KeyColumnRenderer(
 
                 // Draw badge text
                 g2.color = Color.WHITE // Use standard Color.WHITE
-                g2.font = g2.font.deriveFont(Font.BOLD, 12f)
+                g2.font = g2.font.deriveFont(Font.BOLD, 10f)
 
                 val fm = g2.fontMetrics
                 val textWidth = fm.stringWidth(badgeText)
