@@ -9,7 +9,9 @@ class InfoAction : AnAction("Plugin Info") {
     override fun actionPerformed(e: AnActionEvent) {
         // Display developer information in a message dialog
         Messages.showMessageDialog(
-            "Developer: Shahbaz Ansari\nEmail: shahbazansari52@gmail.com\nVersion: 4.0",
+            "Developer: Shahbaz Ansari" +
+                    "\nEmail: shahbazansari52@gmail.com" +
+                    "\nVersion: 7.0",
             "Developer Information",
             Messages.getInformationIcon()
         )

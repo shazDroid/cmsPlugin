@@ -64,48 +64,39 @@ class CmsInputActionWindow(private val project: Project?) {
             val engContent = txtEnglishContent.text ?: ""
             val arContent = txtArabicContent.text ?: ""
 
-            var isSuccess = false
+            //var isSuccess = false'
+            var fileOperations: FileModifier.FileOperationResult? = null
 
             if (cmsKey.isNotEmpty() && engContent.isNotEmpty() && arContent.isNotEmpty()) {
                 fileService.getSelectedFiles().first()
                 fileService.getSelectedFiles().forEachIndexed { index, item ->
                     if (item.contains("CmsKeyMapper.kt")) {
-                        isSuccess = fileModifier.appendCmsKeyToFile(item, cmsKey.trim(), project)
+                        fileOperations = fileModifier.appendCmsKeyToFile(item, cmsKey.trim(), project)
                     }
                 }
 
-                if (isSuccess) {
-                    fileService.getSelectedFiles().forEachIndexed { _, item ->
-                        if (item.contains("DefaultEn.json")) {
-                            jsonFileModifier.appendToEnglishJson(
-                                item,
-                                cmsKey,
-                                engContent.trim(),
-                                project
-                            )
+                when (fileOperations) {
+                    FileModifier.FileOperationResult.SUCCESS -> {
+                        fileService.getSelectedFiles().forEachIndexed { _, item ->
+                            if (item.contains("DefaultEn.json")) {
+                                jsonFileModifier.appendToEnglishJson(
+                                    item,
+                                    cmsKey,
+                                    engContent.trim(),
+                                    project
+                                )
+                            }
+
+                            if (item.contains("DefaultArabic.json")) {
+                                jsonFileModifier.appendToArabicJson(
+                                    item,
+                                    cmsKey,
+                                    arContent.trim(),
+                                    project
+                                )
+                            }
                         }
 
-                        if (item.contains("DefaultArabic.json")) {
-                            jsonFileModifier.appendToArabicJson(
-                                item,
-                                cmsKey,
-                                arContent.trim(),
-                                project
-                            )
-                        }
-                    }
-                }
-
-                if (isSuccess) {
-                    if (addMultipleCheckbox.isSelected) {
-                        Messages.showMessageDialog(
-                            frame,
-                            "CMS Key Added Successfully",
-                            "Success",
-                            Messages.getInformationIcon()
-                        )
-                        clearFields()
-                    } else {
                         Messages.showMessageDialog(
                             frame,
                             "CMS Key Added Successfully",
@@ -113,6 +104,26 @@ class CmsInputActionWindow(private val project: Project?) {
                             Messages.getInformationIcon()
                         )
                         frame.dispose()
+                    }
+
+                    FileModifier.FileOperationResult.FILE_NOT_FOUND -> {
+
+                    }
+
+                    FileModifier.FileOperationResult.DUPLICATE_KEY -> {
+
+                    }
+
+                    FileModifier.FileOperationResult.COMPANION_OBJECT_NOT_FOUND -> {
+
+                    }
+
+                    FileModifier.FileOperationResult.WRITE_ERROR -> {
+
+                    }
+
+                    null -> {
+
                     }
                 }
 

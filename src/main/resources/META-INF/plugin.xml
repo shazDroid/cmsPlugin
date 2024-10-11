@@ -24,7 +24,12 @@
     <!-- Extension points defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
-
+        <toolWindow id="CMS Generator"
+                    factoryClass="com.shazdroid.cmsgen.cmsgenerator.toolbar_window.MainToolbarWindow"
+                    anchor="right"
+                    canCloseContents="false"
+                    icon="/icons/cms_logo.svg"
+        />
     </extensions>
 
 

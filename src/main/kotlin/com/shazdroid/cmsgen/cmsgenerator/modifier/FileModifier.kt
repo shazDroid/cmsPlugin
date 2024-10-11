@@ -1,11 +1,13 @@
 package com.shazdroid.cmsgen.cmsgenerator.modifier
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import java.io.File
+import java.io.IOException
 
 class FileModifier {
     // Function to convert camel case to snake case
@@ -28,73 +30,66 @@ class FileModifier {
         }
     }
 
-    fun appendCmsKeyToFile(filePath: String, cmsKey: String, project: Project?) : Boolean {
-        // Read the file content
+    enum class FileOperationResult {
+        SUCCESS,
+        FILE_NOT_FOUND,
+        DUPLICATE_KEY,
+        COMPANION_OBJECT_NOT_FOUND,
+        WRITE_ERROR
+    }
+
+    fun appendCmsKeyToFile(filePath: String, cmsKey: String, project: Project?): FileOperationResult {
         val file = File(filePath)
         if (!file.exists()) {
-            Messages.showMessageDialog(
-                "File does not exist.",
-                "File not found",
-                Messages.getErrorIcon()
-            )
+            showDialog("File does not exist.", "File not found")
             println("File does not exist.")
-            return false
+            return FileOperationResult.FILE_NOT_FOUND
         }
 
-        var content = file.readText()
-
-        // Convert the camelCase cmsKey to SNAKE_CASE
+        var content = file.readText(Charsets.UTF_8)
         val keyUpperCase = camelToSnakeCase(cmsKey)
-
-        // Remove any spaces from actual keys
         val cmsKey = cmsKey.replace(" ", "")
 
-        // Check if the companion object already contains the new constant to avoid duplicates
         if (content.contains("const val $keyUpperCase")) {
-            Messages.showMessageDialog(
-                "Key '$keyUpperCase' already exists in the file.",
-                "Duplicate key '$keyUpperCase'",
-                Messages.getErrorIcon()
-            )
+            showDialog("Key '$keyUpperCase' already exists in the file.", "Duplicate key '$keyUpperCase'")
             println("Key '$keyUpperCase' already exists in the file.")
-            return false
+            return FileOperationResult.DUPLICATE_KEY
         }
 
-        // Regex to find the companion object block without modifying the rest of the file
-        val companionObjectPattern = Regex("(companion\\s+object\\s*\\{)([\\s\\S]*?)(\\})")
-
+        val companionObjectPattern = Regex("(companion\\s+object\\s*\\{)(.*?)(\\})", RegexOption.DOT_MATCHES_ALL)
         val matchResult = companionObjectPattern.find(content)
+
         if (matchResult == null) {
-            Messages.showMessageDialog(
-                "Companion object not found in CmsKeyMapper.kt",
-                "File Read'$keyUpperCase'",
-                Messages.getErrorIcon()
-            )
+            showDialog("Companion object not found in CmsKeyMapper.kt", "File Read '$keyUpperCase'")
             println("Companion object not found.")
-            return false
+            return FileOperationResult.COMPANION_OBJECT_NOT_FOUND
         }
 
-        val beforeCompanion = content.substring(0, matchResult.range.first) // Everything before the companion object
-        val insideCompanion = matchResult.groups[2]?.value?.trimEnd() ?: ""  // Inside the companion object
-        val afterCompanion = content.substring(matchResult.range.last + 1)   // Everything after the companion object
+        val beforeCompanion = content.substring(0, matchResult.range.first)
+        val insideCompanion = matchResult.groups[2]?.value?.trimEnd() ?: ""
+        val afterCompanion = content.substring(matchResult.range.last + 1)
 
-        // Prepare the new constant string with proper formatting
         val newConstant = "\n        const val $keyUpperCase = \"$cmsKey\"\n"
-
-        // Construct the new content
         val updatedContent = beforeCompanion +
-                matchResult.groups[1]?.value +  // companion object start
+                matchResult.groups[1]?.value +
                 insideCompanion + newConstant + "\n    }" +
                 afterCompanion
 
-        // Write the modified content back to the file
-        file.writeText(updatedContent)
+        return try {
+            file.writeText(updatedContent, Charsets.UTF_8)
+            refreshFile(project, filePath)
+            println("CmsKey '$cmsKey' has been successfully added to the file with proper formatting.")
+            FileOperationResult.SUCCESS
+        } catch (e: IOException) {
+            e.printStackTrace()
+            FileOperationResult.WRITE_ERROR
+        }
+    }
 
-        refreshFile(project, filePath)
-
-        println("CmsKey '$cmsKey' has been successfully added to the file with proper formatting.")
-
-        return true
+    private fun showDialog(message: String, title: String) {
+        ApplicationManager.getApplication().invokeLater {
+            Messages.showMessageDialog(message, title, Messages.getErrorIcon())
+        }
     }
 
     private fun refreshFile(project: Project?, filePath: String) {

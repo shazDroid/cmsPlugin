@@ -10,15 +10,22 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import java.io.File
 
+
 class JsonFileModifier {
 
     private val objectMapper = ObjectMapper().registerModule(KotlinModule())
 
-    fun appendToEnglishJson(enFilePath: String, cmsKey: String, enContent: String, project: Project?) {
+    fun appendToEnglishJson(
+        enFilePath: String,
+        cmsKey: String,
+        enContent: String,
+        project: Project?,
+        insertAtLine: Int = 0
+    ) {
         val enFile = File(enFilePath)
 
-        val cmsKey = cmsKey.replace(" ","").replace("\"","")
-        val enContent = enContent.replace("\"","")
+        val cmsKey = cmsKey.replace(" ", "").replace("\"", "")
+        val enContent = enContent.replace("\"", "")
 
         // Read the existing content
         val enJson: MutableMap<String, String> = if (enFile.exists() && enFile.length() > 0) {
@@ -27,20 +34,52 @@ class JsonFileModifier {
             mutableMapOf()
         }
 
-        // Append the new key-value pair
-        enJson[cmsKey] = enContent
+        // Convert the map to a list of entries to manipulate based on line
+        val entries = enJson.entries.toMutableList()
+
+        if (insertAtLine > 0 && insertAtLine <= entries.size) {
+            entries.add(insertAtLine - 1, object : MutableMap.MutableEntry<String, String> {
+                override val key = cmsKey
+                override var value = enContent
+                override fun setValue(newValue: String): String {
+                    val oldValue = value
+                    value = newValue
+                    return oldValue
+                }
+            })
+        } else {
+            // Append at the end if insertAtLine is 0 or out of bounds
+            entries.add(object : MutableMap.MutableEntry<String, String> {
+                override val key = cmsKey
+                override var value = enContent
+                override fun setValue(newValue: String): String {
+                    val oldValue = value
+                    value = newValue
+                    return oldValue
+                }
+            })
+        }
+
+        // Convert the list back to a map
+        val updatedJson = entries.associate { it.toPair() }
 
         // Write the updated content back while preserving formatting
-        enFile.writeText(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(enJson))
+        enFile.writeText(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(updatedJson))
         refreshFile(project, enFilePath)
-        println("Content successfully appended to DefaultEn.json.")
+        println("Content successfully updated in DefaultEn.json.")
     }
 
-    fun appendToArabicJson(arFilePath: String, cmsKey: String, arContent: String, project: Project?) {
+    fun appendToArabicJson(
+        arFilePath: String,
+        cmsKey: String,
+        arContent: String,
+        project: Project?,
+        insertAtLine: Int = 0
+    ) {
         val arFile = File(arFilePath)
 
-        val cmsKey = cmsKey.replace(" ","")
-        val arContent = arContent.replace("\"","")
+        val cmsKey = cmsKey.replace(" ", "").replace("\"", "")
+        val arContent = arContent.replace("\"", "")
 
         // Read the existing content
         val arJson: MutableMap<String, String> = if (arFile.exists() && arFile.length() > 0) {
@@ -49,13 +88,39 @@ class JsonFileModifier {
             mutableMapOf()
         }
 
-        // Append the new key-value pair
-        arJson[cmsKey] = arContent
+        // Convert the map to a list of entries to manipulate based on line
+        val entries = arJson.entries.toMutableList()
+
+        if (insertAtLine > 0 && insertAtLine <= entries.size) {
+            entries.add(insertAtLine - 1, object : MutableMap.MutableEntry<String, String> {
+                override val key = cmsKey
+                override var value = arContent
+                override fun setValue(newValue: String): String {
+                    val oldValue = value
+                    value = newValue
+                    return oldValue
+                }
+            })
+        } else {
+            // Append at the end if insertAtLine is 0 or out of bounds
+            entries.add(object : MutableMap.MutableEntry<String, String> {
+                override val key = cmsKey
+                override var value = arContent
+                override fun setValue(newValue: String): String {
+                    val oldValue = value
+                    value = newValue
+                    return oldValue
+                }
+            })
+        }
+
+        // Convert the list back to a map
+        val updatedJson = entries.associate { it.toPair() }
 
         // Write the updated content back while preserving formatting
-        arFile.writeText(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(arJson))
+        arFile.writeText(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(updatedJson))
         refreshFile(project, arFilePath)
-        println("Content successfully appended to DefaultAr.json.")
+        println("Content successfully updated in DefaultAr.json.")
     }
 
     private fun refreshFile(project: Project?, filePath: String) {

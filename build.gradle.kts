@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.shazdroid.cmsgen"
-version = "5.0"
+version = "7.0"
 
 repositories {
     mavenCentral()
@@ -49,5 +49,8 @@ tasks {
 dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.13.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.0")
+    implementation ("com.fasterxml.jackson.core:jackson-core:2.15.2")
+    implementation ("com.fasterxml.jackson.core:jackson-annotations:2.15.2")
+
 }
 
