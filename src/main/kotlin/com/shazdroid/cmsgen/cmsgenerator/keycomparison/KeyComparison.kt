@@ -308,6 +308,9 @@ class KeyComparisonTable(
     private fun updateTable(data: Array<Array<Any?>>, keyStatuses: Map<String, KeyStatus>) {
         SwingUtilities.invokeLater {
             println("Updating table with new data")
+
+
+
             val columnNames = arrayOf("Key", "English Value", "Arabic Value")
 
             val model = object : DefaultTableModel(data, columnNames) {
