@@ -5,6 +5,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.JBColor
 import com.intellij.util.ui.JBUI
+import com.shazdroid.cmsgen.cmsgenerator.custom_guis.KeyColumnRenderer
 import com.shazdroid.cmsgen.cmsgenerator.keycomparison.KeyComparisonTable
 import com.shazdroid.cmsgen.cmsgenerator.modifier.FileModifier
 import com.shazdroid.cmsgen.cmsgenerator.modifier.JsonFileModifier
@@ -21,6 +22,8 @@ import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
 import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.DefaultTableModel
+import javax.swing.table.TableModel
+import javax.swing.table.TableRowSorter
 
 
 class CmsMainWindow(private val project: Project) : JDialog() {
@@ -89,6 +92,7 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         tabOperations()
     }
 
+
     private fun compareOperations() {
         refreshLabel.icon = IconLoader.getIcon("refresh.svg".icon(), javaClass)
         progressBar.isVisible = false
@@ -115,7 +119,8 @@ class CmsMainWindow(private val project: Project) : JDialog() {
             viewModel = viewModel,
             compareOperations = compareOperations,
             project = project,
-            progressBar = progressBar
+            progressBar = progressBar,
+            searchTextField = txtSearchField
         )
         isComparisonDataLoaded = true
     }

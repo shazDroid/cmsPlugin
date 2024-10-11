@@ -4,17 +4,28 @@ import com.intellij.ui.JBColor
 import com.shazdroid.cmsgen.cmsgenerator.viewmodel.KeyStatus
 import java.awt.*
 import javax.swing.*
+import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.TableCellRenderer
 
 
 class KeyColumnRenderer(
     private val keyStatuses: Map<String, KeyStatus>
-) : JPanel(), TableCellRenderer {
+) : DefaultTableCellRenderer(), TableCellRenderer {
+
+    // Mutable property to hold the current search text
+    var searchText: String = ""
+        set(value) {
+            field = value
+            // Optionally, trigger a repaint when searchText changes
+            // This ensures that highlights are updated immediately
+            // Note: Ensure this is called on the Event Dispatch Thread (EDT)
+            SwingUtilities.invokeLater { this.parent?.repaint() }
+        }
 
     private val keyLabel = JLabel()
     private val badgeLabel = JLabel()
 
-    private val badgeDiameter = 12
+    private val badgeDiameter = 16
     private val badgePadding = 5
 
     init {
@@ -33,14 +44,32 @@ class KeyColumnRenderer(
     }
 
     override fun getTableCellRendererComponent(
-        table: JTable, value: Any?, isSelected: Boolean,
-        hasFocus: Boolean, row: Int, column: Int
+        table: JTable,
+        value: Any?,
+        isSelected: Boolean,
+        hasFocus: Boolean,
+        row: Int,
+        column: Int
     ): Component {
-        val key = value as? String ?: ""
-        val status = keyStatuses[key]
+        // Call the superclass method to get the default rendering
+        val label = super.getTableCellRendererComponent(
+            table, value, isSelected, hasFocus, row, column
+        ) as JLabel
 
-        keyLabel.text = key
-        keyLabel.font = table.font
+        val key = value as? String ?: ""
+
+        // Set the text to just the key; badge will be drawn separately
+        label.text = key
+
+        return label
+    }
+
+    override fun paintComponent(g: Graphics) {
+        super.paintComponent(g)
+
+        val label = this as JLabel
+        val key = extractPlainText(label.text)
+        val status = keyStatuses[key]
 
         if (status != null) {
             val (badgeText, badgeColor) = when {
@@ -50,45 +79,52 @@ class KeyColumnRenderer(
                 else -> "" to null
             }
 
-            if (badgeColor != null && badgeText.isNotEmpty()) {
-                badgeLabel.icon = createBadgeIcon(badgeText, badgeColor, table.font)
-                badgeLabel.text = ""
-                badgeLabel.toolTipText = when (badgeText) {
-                    "D" -> "Duplicate key detected"
-                    "M" -> "Key missing in CmsKeyMapper.kt"
-                    "!" -> "Key missing in one of the JSON files"
-                    else -> null
-                }
-            } else {
-                badgeLabel.icon = null
-                badgeLabel.text = ""
-                badgeLabel.toolTipText = null
+            if (badgeText.isNotEmpty() && badgeColor != null) {
+                val g2 = g as Graphics2D
+
+                // Enable anti-aliasing for smoother graphics
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+
+                val cellRect = label.getBounds()
+
+                // Calculate badge bounds
+                val badgeX = cellRect.width - badgePadding - badgeDiameter
+                val badgeY = (cellRect.height - badgeDiameter) / 2
+
+                // Draw badge background
+                g2.color = badgeColor
+                g2.fillOval(badgeX, badgeY, badgeDiameter, badgeDiameter)
+
+                // Draw badge text
+                g2.color = Color.WHITE // Use standard Color.WHITE
+                g2.font = g2.font.deriveFont(Font.BOLD, 12f)
+
+                val fm = g2.fontMetrics
+                val textWidth = fm.stringWidth(badgeText)
+                val textHeight = fm.getAscent()
+
+                val textX = badgeX + (badgeDiameter - textWidth) / 2
+                val textY = badgeY + ((badgeDiameter - fm.height) / 2) + fm.ascent
+
+                g2.drawString(badgeText, textX, textY)
+
+                // Optional: Logging for debugging
+                println("Drawing badge for key: $key at ($badgeX, $badgeY)")
             }
-        } else {
-            badgeLabel.icon = null
-            badgeLabel.text = ""
-            badgeLabel.toolTipText = null
         }
-
-        // Handle selection background and foreground
-        if (isSelected) {
-            background = table.selectionBackground
-            keyLabel.foreground = table.selectionForeground
-            badgeLabel.foreground = table.selectionForeground
-        } else {
-            background = table.background
-            keyLabel.foreground = table.foreground
-            badgeLabel.foreground = table.foreground
-        }
-
-        return this
     }
 
-    fun getBadgeBounds(): Rectangle? {
-        badgeLabel.doLayout()
-        badgeLabel.validate()
-        val badgeRect = badgeLabel.bounds
-        return badgeRect
+    /**
+     * Utility function to extract plain text from potentially HTML-formatted text.
+     */
+    private fun extractPlainText(htmlText: String): String {
+        return if (htmlText.startsWith("<html>") && htmlText.endsWith("</html>")) {
+            // Remove HTML tags
+            htmlText.replace("<html>", "").replace("</html>", "")
+                .replace("<span style='background: yellow;'>", "").replace("</span>", "")
+        } else {
+            htmlText
+        }
     }
 
     private fun createBadgeIcon(text: String, color: Color, font: Font): Icon {

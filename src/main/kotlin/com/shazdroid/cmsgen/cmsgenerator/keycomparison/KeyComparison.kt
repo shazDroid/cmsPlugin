@@ -20,8 +20,12 @@ import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.io.File
 import javax.swing.*
+import javax.swing.event.DocumentEvent
+import javax.swing.event.DocumentListener
 import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.DefaultTableModel
+import javax.swing.table.TableModel
+import javax.swing.table.TableRowSorter
 
 class KeyComparisonTable(
     private val table: JTable,
@@ -30,6 +34,7 @@ class KeyComparisonTable(
     private val viewModel: MainViewModel,
     private val compareOperations: Operations.CompareOperations,
     private val project: Project, private val progressBar: JProgressBar,
+    private val searchTextField: JTextField,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main + Job())
 ) {
 
@@ -38,6 +43,53 @@ class KeyComparisonTable(
     init {
         setupTable()
         addBadgeClickListener()
+    }
+
+    fun addSearchFunctionality(table: JTable, searchField: JTextField, renderer: KeyColumnRenderer) {
+        // Ensure the table has a row sorter
+        val rowSorter = table.rowSorter as? TableRowSorter<*> ?: run {
+            println("TableRowSorter not found. Assigning a new TableRowSorter.")
+            val sorter = TableRowSorter<TableModel>(table.model)
+            table.rowSorter = sorter
+            sorter
+        }
+
+        // Add a DocumentListener to respond to changes in the search field
+        searchField.document.addDocumentListener(object : DocumentListener {
+            override fun insertUpdate(e: DocumentEvent?) {
+                updateFilter()
+            }
+
+            override fun removeUpdate(e: DocumentEvent?) {
+                updateFilter()
+            }
+
+            override fun changedUpdate(e: DocumentEvent?) {
+                updateFilter()
+            }
+
+            private fun updateFilter() {
+                val text = searchField.text.trim()
+                renderer.searchText = text // Update the renderer's searchText
+
+                if (text.isEmpty()) {
+                    rowSorter.setRowFilter(null)
+                } else {
+                    // Filter based on multiple columns: "Key" (0), "English Value" (1), "Arabic Value" (2)
+                    rowSorter.setRowFilter(RowFilter.regexFilter("(?i)$text", 0, 1, 2))
+                }
+
+                // Optionally, show a message if no rows match
+                if (rowSorter.rowFilter != null && table.rowCount == 0 && text.isNotEmpty()) {
+                    JOptionPane.showMessageDialog(
+                        table,
+                        "No matches found for \"$text\".",
+                        "No Results",
+                        JOptionPane.INFORMATION_MESSAGE
+                    )
+                }
+            }
+        })
     }
 
     private fun parseJsonFile(file: File?): Map<String, String> {
@@ -309,8 +361,6 @@ class KeyComparisonTable(
         SwingUtilities.invokeLater {
             println("Updating table with new data")
 
-
-
             val columnNames = arrayOf("Key", "English Value", "Arabic Value")
 
             val model = object : DefaultTableModel(data, columnNames) {
@@ -319,6 +369,10 @@ class KeyComparisonTable(
             }
 
             table.model = model
+
+            // Initialize TableRowSorter
+            val sorter = TableRowSorter<TableModel>(model)
+            table.rowSorter = sorter
 
             // Apply the custom renderer to the key column
             val keyRenderer = KeyColumnRenderer(keyStatuses)
@@ -332,6 +386,12 @@ class KeyComparisonTable(
             table.columnModel.getColumn(2).cellRenderer = centerRenderer
 
             table.autoResizeMode = JTable.AUTO_RESIZE_ALL_COLUMNS
+
+            // Retrieve the renderer instance
+            val keyRendererSearch = table.getColumnModel().getColumn(0).cellRenderer as? KeyColumnRenderer
+                ?: throw IllegalStateException("KeyColumnRenderer not assigned to the 'Key' column.")
+
+            addSearchFunctionality(table, searchTextField, keyRendererSearch)
 
             table.revalidate()
             table.repaint()
@@ -511,6 +571,7 @@ class KeyComparisonTable(
             }
         }
     }
+
 
     fun refreshTableData() {
         println("refreshTableData() called")
