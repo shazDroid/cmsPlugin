@@ -7,6 +7,7 @@ import com.intellij.openapi.application.CachedSingletonsRegistry
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
 import com.shazdroid.cmsgen.cmsgenerator.modifier.FileModifier
@@ -15,12 +16,13 @@ import com.shazdroid.cmsgen.cmsgenerator.operations.Operations
 import com.shazdroid.cmsgen.cmsgenerator.storage.FileSelectionService
 import java.io.File
 import java.util.function.Supplier
+import javax.swing.JOptionPane
 
 
 class MainViewModel(
     private val project: Project
 ) {
-    var keyStatuses: Map<String, KeyStatus> = emptyMap()
+    var keyStatuses: MutableMap<String, KeyStatus> = mutableMapOf()
 
     private val fileServiceSupplier: Supplier<FileSelectionService> =
         CachedSingletonsRegistry.lazy { service<FileSelectionService>() }
@@ -86,16 +88,51 @@ class MainViewModel(
         return regex.findAll(content).map { it.groupValues[1] }.toSet()
     }
 
-
-    fun readJsonAsList(file: File?): List<Pair<String, String>> {
-        if (file == null || !file.exists()) return emptyList()
+    fun getValueFromFile(file: File?, key: String): String? {
+        if (file == null || !file.exists()) return null
 
         val objectMapper = ObjectMapper().registerModule(KotlinModule())
         val typeRef = object : TypeReference<Map<String, String>>() {}
-        val jsonMap: Map<String, String> = objectMapper.readValue(file, typeRef)
 
-        // Convert the map to a list of key-value pairs (lines)
-        return jsonMap.toList()
+        return try {
+            val jsonMap: Map<String, String> = objectMapper.readValue(file, typeRef)
+            jsonMap[key]
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+
+
+    fun readJsonAsList(file: File?): List<Pair<String, String>> {
+        if (file == null || !file.exists()) {
+            JOptionPane.showMessageDialog(
+                null,
+                "File does not exist or is null: ${file?.path ?: "Unknown"}",
+                "File Error",
+                JOptionPane.ERROR_MESSAGE
+            )
+            return emptyList()
+        }
+
+        return try {
+            val objectMapper = ObjectMapper().registerModule(KotlinModule())
+            val typeRef = object : TypeReference<Map<String, String>>() {}
+            val jsonMap: Map<String, String> = objectMapper.readValue(file, typeRef)
+
+            // Convert the map to a list of key-value pairs
+            jsonMap.toList()
+
+        } catch (e: Exception) {
+            Messages.showMessageDialog(
+                project,
+                "<html>Error parsing JSON file: <b style='color: red;'>${file.path}</b><br/>File Name <b style='color: blue;'>${file.name}</b><b><br/>Error: ${e.message}</html>",
+                "JSON Parsing Error",
+                Messages.getErrorIcon()
+            )
+            emptyList() // Return empty list if parsing fails
+        }
     }
 
 

@@ -1,6 +1,5 @@
 package com.shazdroid.cmsgen.cmsgenerator.custom_guis
 
-import com.intellij.ui.JBColor
 import com.shazdroid.cmsgen.cmsgenerator.viewmodel.KeyStatus
 import java.awt.*
 import javax.swing.*
@@ -63,7 +62,7 @@ class KeyColumnRenderer(
         val status = keyStatuses[key]
 
         if (status != null) {
-            val (badgeText, badgeColor) = when {
+            var (badgeText, badgeColor) = when {
                 status.isDuplicatedInEn || status.isDuplicatedInAr -> "D" to Color(242, 166, 34)
                 status.isMissingInCmsKeyMapper -> "M" to Color(34, 166, 242)
                 status.isMissingInEn || status.isMissingInAr -> "!" to Color(226, 61, 48)
@@ -99,6 +98,10 @@ class KeyColumnRenderer(
                 g2.drawString(badgeText, textX, textY)
 
                 println("Drawing badge for key: $key at ($badgeX, $badgeY)")
+            } else {
+                badgeLabel.icon = null
+                badgeLabel.text = ""
+                badgeColor = null
             }
         }
     }

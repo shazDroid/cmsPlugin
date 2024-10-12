@@ -1,13 +1,16 @@
 package com.shazdroid.cmsgen.cmsgenerator.window
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.util.IconLoader
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.ui.JBColor
 import com.intellij.util.ui.JBUI
 import com.shazdroid.cmsgen.cmsgenerator.actions.FileChooserDialog
 import com.shazdroid.cmsgen.cmsgenerator.keycomparison.KeyComparisonTable
+import com.shazdroid.cmsgen.cmsgenerator.modifier.FileChangeListener
 import com.shazdroid.cmsgen.cmsgenerator.modifier.FileModifier
 import com.shazdroid.cmsgen.cmsgenerator.modifier.JsonFileModifier
 import com.shazdroid.cmsgen.cmsgenerator.operations.Operations
@@ -104,7 +107,19 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         addIconsToTab()
         handleClear()
         tabOperations()
+        registerJsonFileChangeListener()
     }
+
+    private fun registerJsonFileChangeListener() {
+        val fileManager = VirtualFileManager.getInstance()
+        val listener = FileChangeListener(project) {
+//            ApplicationManager.getApplication().invokeLater {
+//                keyComparisonTable?.refreshTableData()
+//            }
+        }
+        fileManager.addVirtualFileListener(listener)
+    }
+
 
     private fun performFileSelection() {
         val fileChooserDialog = FileChooserDialog(project) {

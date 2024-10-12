@@ -11,7 +11,7 @@ import javax.swing.JPanel
 
 class JsonFormatterMainToolbarWindow : ToolWindowFactory {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val jsonFormatter = JsonFormatter()
+        val jsonFormatter = JsonFormatter(project)
         val mainWindowPanel = jsonFormatter.mainPanel
 
         adjustPanelSize(mainWindowPanel)
@@ -23,7 +23,7 @@ class JsonFormatterMainToolbarWindow : ToolWindowFactory {
 
     private fun adjustPanelSize(panel: JPanel) {
         val preferredWidth = panel.preferredSize.width
-        val minimumWidth = 300
+        val minimumWidth = 500
 
         panel.preferredSize = panel.preferredSize.apply {
             width = preferredWidth.coerceAtLeast(minimumWidth)

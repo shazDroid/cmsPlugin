@@ -6,6 +6,7 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonParser
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.Messages
 import com.shazdroid.cmsgen.cmsgenerator.custom_guis.KeyColumnRenderer
 import com.shazdroid.cmsgen.cmsgenerator.modifier.FileModifier
 import com.shazdroid.cmsgen.cmsgenerator.modifier.JsonFileModifier
@@ -22,6 +23,7 @@ import java.io.File
 import javax.swing.*
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
+import javax.swing.event.TableModelEvent
 import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.DefaultTableModel
 import javax.swing.table.TableModel
@@ -180,7 +182,7 @@ class KeyComparisonTable(
                     status.isMissingInEn || status.isMissingInAr
         })
 
-        val paginatedData = sortedData.drop(pageIndex * pageSize).take(pageSize)
+            val paginatedData = sortedData
         val dataArray: Array<Array<Any?>> = paginatedData.toTypedArray()
 
         viewModel.keyStatuses = keyStatuses
@@ -376,16 +378,17 @@ class KeyComparisonTable(
     }
 
 
-    // Your existing handleBadgeClick function
     fun handleBadgeClick(key: String, project: Project, parentComponent: Component) {
         ApplicationManager.getApplication().invokeLater {
             val status = viewModel.keyStatuses[key]
             if (status == null) {
-                JOptionPane.showMessageDialog(
+                Messages.showDialog(
                     parentComponent,
                     "Status for key '$key' not found.",
                     "Error",
-                    JOptionPane.ERROR_MESSAGE
+                    arrayOf("OK"),
+                    0,
+                    Messages.getErrorIcon()
                 )
                 return@invokeLater
             }
@@ -396,53 +399,76 @@ class KeyComparisonTable(
                 if (status.isDuplicatedInAr) files.add("Arabic JSON")
                 val fileList = files.joinToString(" and ")
 
-                val result = JOptionPane.showConfirmDialog(
+                val result = Messages.showDialog(
                     parentComponent,
                     "Key '$key' is duplicated in $fileList. Do you want to remove duplicates?",
                     "Duplicate Key Detected",
-                    JOptionPane.YES_NO_OPTION
+                    arrayOf("Yes", "No"),
+                    0,
+                    Messages.getWarningIcon()
                 )
 
-                if (result == JOptionPane.YES_OPTION) {
+                if (result == 0) {  // YES Option
                     if (status.isDuplicatedInEn) {
                         compareOperations.removeDuplicatesInFile(
-                            viewModel.getEnglishJsonFile(), key, project, viewModel
+                            viewModel.getEnglishJsonFile(),
+                            key,
+                            project,
+                            viewModel,
+                            this
                         )
                     }
                     if (status.isDuplicatedInAr) {
-                        compareOperations.removeDuplicatesInFile(viewModel.getArabicJsonFile(), key, project, viewModel)
-                    }
-                    JOptionPane.showMessageDialog(parentComponent, "Duplicates for key '$key' have been removed.")
-                    SwingUtilities.invokeLater {
-                        refreshTableData()
+                        compareOperations.removeDuplicatesInFile(
+                            viewModel.getArabicJsonFile(),
+                            key,
+                            project,
+                            viewModel,
+                            this
+                        )
                     }
                 }
             } else if (status.isMissingInCmsKeyMapper) {
-                val result = JOptionPane.showConfirmDialog(
+                val result = Messages.showDialog(
                     parentComponent,
                     "Key '$key' is missing in CmsKeyMapper.kt. Do you want to add it?",
                     "Add Key to CmsKeyMapper.kt",
-                    JOptionPane.YES_NO_OPTION
+                    arrayOf("Yes", "No"),
+                    0,
+                    Messages.getQuestionIcon()
                 )
-                if (result == JOptionPane.YES_OPTION) {
+                if (result == 0) {  // YES Option
                     val fileModifier = FileModifier()
                     val cmsKeyFilePath = viewModel.getCmsKeyMapperFile()?.path ?: ""
 
                     if (cmsKeyFilePath.isNotEmpty()) {
                         val operationResult = fileModifier.appendCmsKeyToFile(cmsKeyFilePath, key, project)
                         if (operationResult == FileModifier.FileOperationResult.SUCCESS) {
-                            JOptionPane.showMessageDialog(parentComponent, "Key '$key' added to CmsKeyMapper.kt.")
-                            SwingUtilities.invokeLater {
-                                refreshTableData()
-                            }
+                            // Refresh the table with proper English and Arabic values
+                            val enValue = viewModel.getValueFromFile(viewModel.getEnglishJsonFile(), key)
+                            val arValue = viewModel.getValueFromFile(viewModel.getArabicJsonFile(), key)
+                            updateTableRowWithValues(key, enValue, arValue)
+                            updateKeyStatusAfterOperation(key)
+                            updateTableRowAfterOperation(key, enValue, arValue)
                         } else {
-                            JOptionPane.showMessageDialog(
+                            Messages.showDialog(
                                 parentComponent,
-                                "Error adding key '$key' to CmsKeyMapper.kt."
+                                "Error adding key '$key' to CmsKeyMapper.kt.",
+                                "Error",
+                                arrayOf("OK"),
+                                0,
+                                Messages.getErrorIcon()
                             )
                         }
                     } else {
-                        JOptionPane.showMessageDialog(parentComponent, "Error: CmsKeyMapper.kt file not found.")
+                        Messages.showDialog(
+                            parentComponent,
+                            "Error: CmsKeyMapper.kt file not found.",
+                            "Error",
+                            arrayOf("OK"),
+                            0,
+                            Messages.getErrorIcon()
+                        )
                     }
                 }
             } else if (status.isMissingInEn || status.isMissingInAr) {
@@ -451,14 +477,16 @@ class KeyComparisonTable(
                 if (status.isMissingInAr) missingIn.add("Arabic")
                 val files = missingIn.joinToString(" and ")
 
-                val result = JOptionPane.showConfirmDialog(
+                val result = Messages.showDialog(
                     parentComponent,
                     "Key '$key' is missing in $files JSON file(s). Do you want to add it?",
                     "Add Key to JSON File(s)",
-                    JOptionPane.YES_NO_OPTION
+                    arrayOf("Yes", "No"),
+                    0,
+                    Messages.getQuestionIcon()
                 )
 
-                if (result == JOptionPane.YES_OPTION) {
+                if (result == 0) {  // YES Option
                     val jsonModifier = JsonFileModifier()
                     val enFilePath = viewModel.getEnglishJsonFile()?.path ?: ""
                     val arFilePath = viewModel.getArabicJsonFile()?.path ?: ""
@@ -466,8 +494,16 @@ class KeyComparisonTable(
                     var enAdded = false
                     var arAdded = false
 
+                    var enValue: String? = null
+                    var arValue: String? = null
+
                     if (enFilePath.isNotEmpty() && status.isMissingInEn) {
-                        val enValue = JOptionPane.showInputDialog(parentComponent, "Enter English value for '$key':")
+                        enValue = Messages.showInputDialog(
+                            project,
+                            "Enter English value for '$key':",
+                            "Add English Value",
+                            Messages.getQuestionIcon()
+                        )
                         if (enValue != null) {
                             jsonModifier.appendToEnglishJson(enFilePath, key, enValue, project)
                             enAdded = true
@@ -475,7 +511,12 @@ class KeyComparisonTable(
                     }
 
                     if (arFilePath.isNotEmpty() && status.isMissingInAr) {
-                        val arValue = JOptionPane.showInputDialog(parentComponent, "Enter Arabic value for '$key':")
+                        arValue = Messages.showInputDialog(
+                            project,
+                            "Enter Arabic value for '$key':",
+                            "Add Arabic Value",
+                            Messages.getQuestionIcon()
+                        )
                         if (arValue != null) {
                             jsonModifier.appendToArabicJson(arFilePath, key, arValue, project)
                             arAdded = true
@@ -483,10 +524,16 @@ class KeyComparisonTable(
                     }
 
                     if (enAdded || arAdded) {
-                        JOptionPane.showMessageDialog(parentComponent, "Key '$key' added to JSON file(s).")
-                        SwingUtilities.invokeLater {
-                            refreshTableData()
-                        }
+                        updateKeyStatusAfterOperation(key, enAdded, arAdded)
+                        updateTableRowAfterOperation(key, enValue, arValue)
+                        Messages.showDialog(
+                            parentComponent,
+                            "Key '$key' added to JSON file(s).",
+                            "Success",
+                            arrayOf("OK"),
+                            0,
+                            Messages.getInformationIcon()
+                        )
                     }
                 }
             }
@@ -494,9 +541,67 @@ class KeyComparisonTable(
     }
 
 
+    fun reSortTable() {
+        val rowSorter = table.rowSorter as? TableRowSorter<DefaultTableModel> ?: return
+        rowSorter.sort()
+    }
+
+
+    fun updateTableRowAfterOperation(key: String, enValue: String?, arValue: String?) {
+        val rowIndex = getRowIndexForKey(key)
+        if (rowIndex != -1) {
+            table.model.setValueAt(enValue, rowIndex, 1)
+            table.model.setValueAt(arValue, rowIndex, 2)
+
+            table.tableChanged(TableModelEvent(table.model, rowIndex))
+        }
+    }
+
+    fun getRowIndexForKey(key: String): Int {
+        for (rowIndex in 0 until table.rowCount) {
+            val tableKey = table.getValueAt(rowIndex, 0) as? String
+            if (tableKey == key) {
+                return rowIndex
+            }
+        }
+        return -1
+    }
+
+    fun updateTableRowWithValues(key: String, enValue: String?, arValue: String?) {
+        val rowIndex = table.model.rowCount - 1
+
+        for (i in 0 until table.model.rowCount) {
+            val tableKey = table.model.getValueAt(i, 0) as? String
+            if (tableKey == key) {
+                table.model.setValueAt(enValue ?: "", i, 1)
+                table.model.setValueAt(arValue ?: "", i, 2)
+
+                (table.model as DefaultTableModel).fireTableRowsUpdated(i, i)
+                break
+            }
+        }
+    }
+
+    fun updateKeyStatusAfterOperation(
+        key: String,
+        isEnglishUpdated: Boolean = false,
+        isArabicUpdated: Boolean = false
+    ) {
+        val status = viewModel.keyStatuses[key] ?: return
+
+        if (isEnglishUpdated) {
+            status.isMissingInEn = false
+        }
+        if (isArabicUpdated) {
+            status.isMissingInAr = false
+        }
+        status.isMissingInCmsKeyMapper = false
+
+        viewModel.keyStatuses[key] = status
+    }
+
     fun refreshTableData() {
         println("refreshTableData() called")
-        // Clear any cached data
         keyStatuses.clear()
 
         SwingUtilities.invokeLater {

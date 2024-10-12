@@ -2,6 +2,7 @@ package com.shazdroid.cmsgen.cmsgenerator.operations
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
+import com.shazdroid.cmsgen.cmsgenerator.keycomparison.KeyComparisonTable
 import com.shazdroid.cmsgen.cmsgenerator.modifier.FileModifier
 import com.shazdroid.cmsgen.cmsgenerator.modifier.JsonFileModifier
 import com.shazdroid.cmsgen.cmsgenerator.storage.FileSelectionService
@@ -108,10 +109,18 @@ class Operations(
             file: File?,
             key: String,
             project: Project,
-            viewModel: MainViewModel
+            viewModel: MainViewModel,
+            keyComparisonTable: KeyComparisonTable
         ) {
             if (file == null || !file.exists()) {
-                JOptionPane.showMessageDialog(null, "File not found.")
+                Messages.showDialog(
+                    null,
+                    "File not found.",
+                    "Error",
+                    arrayOf("OK"),
+                    0,
+                    Messages.getErrorIcon()
+                )
                 return
             }
 
@@ -121,24 +130,32 @@ class Operations(
                     val regex = Pattern.compile("\"(.*?)\"\\s*:\\s*\"(.*?)\"")
 
                     val occurrenceIndices = mutableListOf<Int>()
+                    var lastValue: String? = null
                     for ((index, line) in lines.withIndex()) {
                         val matcher = regex.matcher(line)
                         if (matcher.find()) {
                             val lineKey = matcher.group(1)
+                            val lineValue = matcher.group(2)
                             if (lineKey == key) {
                                 occurrenceIndices.add(index)
+                                lastValue = lineValue
                             }
                         }
                     }
 
-
                     if (occurrenceIndices.size <= 1) {
-                        JOptionPane.showMessageDialog(null, "No duplicates found for key: $key.")
+                        Messages.showDialog(
+                            null,
+                            "No duplicates found for key: $key.",
+                            "Duplicate Removal",
+                            arrayOf("OK"),
+                            0,
+                            Messages.getInformationIcon()
+                        )
                         return@launch
                     }
 
-                    val linesToRemove = occurrenceIndices.dropLast(1)
-
+                    val linesToRemove = occurrenceIndices.dropLast(1)  // Keep the last occurrence
 
                     val cleanedLines = lines.toMutableList()
 
@@ -151,12 +168,33 @@ class Operations(
                     }
 
                     viewModel.refreshFile(project, file.path)
+
+                    keyComparisonTable.updateTableRowAfterOperation(key, lastValue, lastValue)
+
+                    keyComparisonTable.reSortTable()
+
+                    Messages.showDialog(
+                        null,
+                        "Duplicates for key '$key' have been removed.",
+                        "Duplicate Removal",
+                        arrayOf("OK"),
+                        0,
+                        Messages.getInformationIcon()
+                    )
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    JOptionPane.showMessageDialog(null, "Error removing duplicates for key: $key.")
+                    Messages.showDialog(
+                        null,
+                        "Error removing duplicates for key: $key.",
+                        "Error",
+                        arrayOf("OK"),
+                        0,
+                        Messages.getErrorIcon()
+                    )
                 }
             }
         }
+
 
         fun cancelOperations() {
             job.cancel() // Cancels all ongoing operations

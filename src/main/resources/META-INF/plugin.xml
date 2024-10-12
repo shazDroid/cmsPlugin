@@ -37,6 +37,7 @@
                     canCloseContents="false"
                     icon="/icons/json.svg"
         />
+        <applicationService serviceImplementation="com.shazdroid.cmsgen.cmsgenerator.storage.FileSelectionService"/>
     </extensions>
 
 
