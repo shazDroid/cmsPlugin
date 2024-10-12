@@ -30,6 +30,13 @@
                     canCloseContents="false"
                     icon="/icons/cms_logo.svg"
         />
+
+        <toolWindow id="JSON Viewer"
+                    factoryClass="com.shazdroid.cmsgen.cmsgenerator.toolbar_window.JsonFormatterMainToolbarWindow"
+                    anchor="right"
+                    canCloseContents="false"
+                    icon="/icons/json.svg"
+        />
     </extensions>
 
 

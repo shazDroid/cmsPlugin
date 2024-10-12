@@ -94,6 +94,10 @@ class Operations(
         }
     }
 
+    inner class BulkParseOperations(){
+
+    }
+
 
     inner class CompareOperations(private val table: JTable) : CoroutineScope {
         private val job = Job()

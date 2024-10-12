@@ -20,7 +20,9 @@ class CmsAction : AnAction("CMS generator") {
 
         // Show the custom dialog
         if (project != null) {
-            val dialog = FileChooserDialog(project)
+            val dialog = FileChooserDialog(project){
+
+            }
             dialog.show()
         }
     }

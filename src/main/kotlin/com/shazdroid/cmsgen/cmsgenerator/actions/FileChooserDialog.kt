@@ -5,13 +5,17 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Messages
+import com.shazdroid.cmsgen.cmsgenerator.modifier.FileModifier
 import com.shazdroid.cmsgen.cmsgenerator.storage.FileSelectionService
 import java.awt.GridLayout
 import java.io.File
 import javax.swing.*
 import javax.swing.filechooser.FileNameExtensionFilter
 
-class FileChooserDialog(private val project: Project) : DialogWrapper(project) {
+class FileChooserDialog(
+    private val project: Project,
+    private val fileAction: (FileModifier.FileOperationResult) -> Unit
+) : DialogWrapper(project) {
 
     private val file1Label = JLabel("File 1: Not selected")
     private val file2Label = JLabel("File 2: Not selected")
@@ -99,7 +103,7 @@ class FileChooserDialog(private val project: Project) : DialogWrapper(project) {
                 "Files Selected",
                 Messages.getInformationIcon()
             )
-
+            fileAction.invoke(FileModifier.FileOperationResult.SUCCESS)
             super.doOKAction()
 
         } else {
@@ -108,6 +112,7 @@ class FileChooserDialog(private val project: Project) : DialogWrapper(project) {
                 "Error",
                 Messages.getErrorIcon()
             )
+            fileAction.invoke(FileModifier.FileOperationResult.FILE_NOT_FOUND)
         }
     }
 }

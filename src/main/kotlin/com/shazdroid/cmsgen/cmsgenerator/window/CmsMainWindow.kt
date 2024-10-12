@@ -2,10 +2,11 @@ package com.shazdroid.cmsgen.cmsgenerator.window
 
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.JBColor
 import com.intellij.util.ui.JBUI
-import com.shazdroid.cmsgen.cmsgenerator.custom_guis.KeyColumnRenderer
+import com.shazdroid.cmsgen.cmsgenerator.actions.FileChooserDialog
 import com.shazdroid.cmsgen.cmsgenerator.keycomparison.KeyComparisonTable
 import com.shazdroid.cmsgen.cmsgenerator.modifier.FileModifier
 import com.shazdroid.cmsgen.cmsgenerator.modifier.JsonFileModifier
@@ -43,6 +44,8 @@ class CmsMainWindow(private val project: Project) : JDialog() {
     lateinit var cmbReferenceFile: JComboBox<String>
     lateinit var lblEnterLineNo: JLabel
     lateinit var addCmsStringPanel: JPanel
+    lateinit var fileNotSelectedLabel: JLabel
+    lateinit var goToSettingsButton: JButton
 
     // Compare components
     lateinit var comparePanel: JPanel
@@ -53,7 +56,19 @@ class CmsMainWindow(private val project: Project) : JDialog() {
     lateinit var refreshLabel: JLabel
     lateinit var progressBar: JProgressBar
 
+
+    // Bulk parsing
+
+
+    // Settings
+    lateinit var selectedFilesList: JList<String>
+    lateinit var resetFileSelection: JButton
+    lateinit var addFilesButton: JButton
+    val selectedFileModels = DefaultListModel<String>()
+    var isFilesAlreadyAddedInList = false
+
     private val uiScope = CoroutineScope(Dispatchers.Main)
+
 
     private val frame = JFrame()
     private val fileService = service<FileSelectionService>()
@@ -82,12 +97,67 @@ class CmsMainWindow(private val project: Project) : JDialog() {
 
     // Show form
     fun showForm() {
+        checkFileSelections()
         generateFrame()
         initUi()
         handleAddCmsString()
         addIconsToTab()
         handleClear()
         tabOperations()
+    }
+
+    private fun performFileSelection() {
+        val fileChooserDialog = FileChooserDialog(project) {
+            when (it) {
+                FileModifier.FileOperationResult.SUCCESS -> {
+                    keyComparisonTable?.refreshTableData()
+                    keyComparisonTable?.refreshTableData()
+                }
+
+                FileModifier.FileOperationResult.FILE_NOT_FOUND -> {
+                    keyComparisonTable?.refreshTableData()
+                }
+
+                FileModifier.FileOperationResult.DUPLICATE_KEY -> {}
+                FileModifier.FileOperationResult.COMPANION_OBJECT_NOT_FOUND -> {}
+                FileModifier.FileOperationResult.WRITE_ERROR -> {}
+            }
+        }
+        fileChooserDialog.show()
+    }
+
+    private fun clearFileSelection() {
+        // Show a confirmation dialog
+        val result = Messages.showYesNoDialog(
+            "Are you sure you want to reset the plugin?",
+            "Confirm Clear",
+            Messages.getQuestionIcon()
+        )
+
+        // Check the user's response
+        if (result == Messages.YES) {
+            fileService.clearSelectedFiles()
+            Messages.showInfoMessage(
+                "Plugin has been reset, now you can select files again\n" +
+                        "Note: CmsKeyMapper, DefaultEn, DefaultArabic files are not affected by these action.",
+                "Clear Success"
+            )
+            isFilesAlreadyAddedInList = false
+            keyComparisonTable?.refreshTableData()
+        } else {
+            // User chose not to clear the files
+            Messages.showInfoMessage("Operation cancelled.", "Cancelled")
+        }
+    }
+
+    private fun checkFileSelections() {
+        if (fileService.getSelectedFiles().isEmpty()) {
+            fileNotSelectedLabel.isVisible = true
+            goToSettingsButton.isVisible = true
+        } else {
+            fileNotSelectedLabel.isVisible = false
+            goToSettingsButton.isVisible = false
+        }
     }
 
 
@@ -142,6 +212,65 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         setupTextArea()
         populateInsertAtLineCombo()
         compareOperations()
+        handleFileSelectionUi()
+
+        // handle file selection
+        goToSettingsButton.addActionListener {
+            // move tab to settings
+            mainTabLayout.selectedIndex = 3
+        }
+
+        // clear file selection
+        resetFileSelection.addActionListener {
+            clearFileSelection()
+            handleFileSelectionUi()
+        }
+
+        // add files
+        addFilesButton.addActionListener {
+            performFileSelection()
+            handleFileSelectionUi()
+        }
+
+        // populate files
+        populateFilesListInSettings()
+    }
+
+    private fun handleFileSelectionUi() {
+        if (fileService.getSelectedFiles().isEmpty()) {
+            addFilesButton.isEnabled = true
+            selectedFileModels.removeAllElements()
+            selectedFileModels.addElement("No files selected !")
+            isFilesAlreadyAddedInList = false
+        } else {
+            addFilesButton.isEnabled = false
+            populateFilesListInSettings()
+            if (selectedFileModels.contains("No files selected!")) {
+                selectedFileModels.removeElement("No files selected!")
+            }
+        }
+    }
+
+    private fun populateFilesListInSettings() {
+        // add border to JList
+        selectedFilesList.border = BorderFactory.createLineBorder(JBColor.GRAY, 1)
+        if (isFilesAlreadyAddedInList.not()) {
+            fileService.getSelectedFiles().forEach { item ->
+                if (item.contains("DefaultEn.json")) {
+                    selectedFileModels.addElement("English File : $item")
+                }
+
+                if (item.contains("DefaultArabic.json")) {
+                    selectedFileModels.addElement("Arabic File : $item")
+                }
+
+                if (item.contains("CmsKeyMapper.kt")) {
+                    selectedFileModels.addElement("CmsKeyMapper File : $item")
+                }
+            }
+            isFilesAlreadyAddedInList = true
+            selectedFilesList.model = selectedFileModels
+        }
     }
 
     private fun tabOperations() {
