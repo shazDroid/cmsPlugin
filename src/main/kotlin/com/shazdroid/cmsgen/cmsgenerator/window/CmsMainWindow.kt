@@ -81,7 +81,8 @@ class CmsMainWindow(private val project: Project) : JDialog() {
     lateinit var bulkOperations: Operations.BulkAddOperations
     lateinit var csvScrollPane: JScrollPane
     lateinit var developerPanel: JPanel
-
+    lateinit var selectedCmsKeyFilePathLabel: JLabel
+    lateinit var selectCmsMediaKeyButton: JButton
 
     // Settings
     lateinit var selectedFilesList: JList<String>
@@ -243,7 +244,7 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         compareOperations()
         handleFileSelectionUi()
         showKeySelectionForBulkParse()
-
+        // initCmsMediaKeyOperations()
 
         goToSettingsButton.addActionListener {
             mainTabLayout.selectedIndex = 3
@@ -707,23 +708,5 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         comboBox.removeAllItems()
         originalKeys.filter { it != selectedKey }.forEach { comboBox.addItem(it) }
     }
-
-
-    fun removeSelectedKeyFromComboBox(comboBox: JComboBox<String>, selectedKey: String) {
-        val currentItems = mutableListOf<String>()
-
-        for (i in 0 until comboBox.itemCount) {
-            val item = comboBox.getItemAt(i)
-            if (item != selectedKey) {
-                currentItems.add(item)
-            }
-        }
-
-        comboBox.removeAllItems()
-        currentItems.forEach { comboBox.addItem(it) }
-
-        if (comboBox.itemCount > 0) comboBox.selectedIndex = 0
-    }
-
 }
 
