@@ -149,4 +149,19 @@ class MainViewModel(
             return addCmString(cmsKey, engContent, arContent, insertAtLine, fileSelected)
         }
     }
+
+    fun isDuplicateKey(cmsKey: String): Boolean {
+        val enFile = getEnglishJsonFile()
+        val enEntries = readJsonAsList(enFile)
+        val isDuplicateInEnglish = enEntries.any { it.first == cmsKey }
+
+        val arFile = getArabicJsonFile()
+        val arEntries = readJsonAsList(arFile)
+        val isDuplicateInArabic = arEntries.any { it.first == cmsKey }
+
+        val cmsKeys = getKeysFromCmsKeyMapper()
+        val isDuplicateInCmsKeyMapper = cmsKeys.contains(cmsKey)
+
+        return isDuplicateInEnglish || isDuplicateInArabic || isDuplicateInCmsKeyMapper
+    }
 }

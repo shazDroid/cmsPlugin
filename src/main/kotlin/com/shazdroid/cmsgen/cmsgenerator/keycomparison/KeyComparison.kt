@@ -603,7 +603,6 @@ class KeyComparisonTable(
     fun refreshTableData() {
         println("refreshTableData() called")
         keyStatuses.clear()
-
         SwingUtilities.invokeLater {
             setupTable()
         }

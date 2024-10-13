@@ -18,7 +18,7 @@ fun JTextArea.enableTabTraversal(nextTextArea: JTextArea) {
     this.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke("TAB"), tabAction)
     this.actionMap.put(tabAction, object : AbstractAction() {
         override fun actionPerformed(e: ActionEvent?) {
-            nextTextArea.requestFocus() // Move focus to the next text area
+            nextTextArea.requestFocus()
         }
     })
 }
@@ -28,7 +28,7 @@ fun JTextArea.enableShiftTabTraversal(previousTextArea: JTextArea) {
     this.getInputMap(JComponent.WHEN_FOCUSED).put(KeyStroke.getKeyStroke("shift TAB"), shiftTabAction)
     this.actionMap.put(shiftTabAction, object : AbstractAction() {
         override fun actionPerformed(e: ActionEvent?) {
-            previousTextArea.requestFocus() // Move focus to the previous text area
+            previousTextArea.requestFocus()
         }
     })
 }

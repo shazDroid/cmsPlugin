@@ -1,6 +1,5 @@
 package com.shazdroid.cmsgen.cmsgenerator.window
 
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
@@ -21,9 +20,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.awt.Component
+import java.io.BufferedReader
+import java.io.File
+import java.io.FileReader
 import javax.swing.*
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
+import javax.swing.filechooser.FileNameExtensionFilter
 import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.DefaultTableModel
 
@@ -61,6 +64,22 @@ class CmsMainWindow(private val project: Project) : JDialog() {
 
 
     // Bulk parsing
+    lateinit var chooseFileButton: JButton
+    lateinit var csvTable: JTable
+    lateinit var keySelectionPanel: JPanel
+    lateinit var cmbCmsKey: JComboBox<String>
+    lateinit var cmbEnglishKey: JComboBox<String>
+    lateinit var cmbArabicKey: JComboBox<String>
+    private var headers: List<String> = ArrayList()
+    private var csvContent: MutableList<List<String>> = mutableListOf()
+    lateinit var sepOne: JSeparator
+    lateinit var sepTwo: JSeparator
+    lateinit var parseButton: JButton
+    val originalCmsKeys = mutableListOf<String>()
+    val originalEnglishKeys = mutableListOf<String>()
+    val originalArabicKeys = mutableListOf<String>()
+    lateinit var bulkOperations: Operations.BulkAddOperations
+    lateinit var csvScrollPane: JScrollPane
 
 
     // Settings
@@ -98,7 +117,6 @@ class CmsMainWindow(private val project: Project) : JDialog() {
 
     private var keyComparisonTable: KeyComparisonTable? = null
 
-    // Show form
     fun showForm() {
         checkFileSelections()
         generateFrame()
@@ -113,9 +131,6 @@ class CmsMainWindow(private val project: Project) : JDialog() {
     private fun registerJsonFileChangeListener() {
         val fileManager = VirtualFileManager.getInstance()
         val listener = FileChangeListener(project) {
-//            ApplicationManager.getApplication().invokeLater {
-//                keyComparisonTable?.refreshTableData()
-//            }
         }
         fileManager.addVirtualFileListener(listener)
     }
@@ -142,14 +157,13 @@ class CmsMainWindow(private val project: Project) : JDialog() {
     }
 
     private fun clearFileSelection() {
-        // Show a confirmation dialog
         val result = Messages.showYesNoDialog(
             "Are you sure you want to reset the plugin?",
             "Confirm Clear",
             Messages.getQuestionIcon()
         )
 
-        // Check the user's response
+
         if (result == Messages.YES) {
             fileService.clearSelectedFiles()
             Messages.showInfoMessage(
@@ -160,7 +174,6 @@ class CmsMainWindow(private val project: Project) : JDialog() {
             isFilesAlreadyAddedInList = false
             keyComparisonTable?.refreshTableData()
         } else {
-            // User chose not to clear the files
             Messages.showInfoMessage("Operation cancelled.", "Cancelled")
         }
     }
@@ -194,7 +207,7 @@ class CmsMainWindow(private val project: Project) : JDialog() {
     private fun loadDataForComparison() {
         val enFile = viewModel.getEnglishJsonFile()
         val arFile = viewModel.getArabicJsonFile()
-        // Remove cmsKeys parameter
+
         keyComparisonTable = KeyComparisonTable(
             table = comparisonTable,
             enFile = enFile,
@@ -228,26 +241,32 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         populateInsertAtLineCombo()
         compareOperations()
         handleFileSelectionUi()
+        showKeySelectionForBulkParse()
 
-        // handle file selection
+
         goToSettingsButton.addActionListener {
-            // move tab to settings
             mainTabLayout.selectedIndex = 3
         }
 
-        // clear file selection
+
         resetFileSelection.addActionListener {
             clearFileSelection()
             handleFileSelectionUi()
         }
 
-        // add files
+
         addFilesButton.addActionListener {
             performFileSelection()
             handleFileSelectionUi()
         }
 
-        // populate files
+        // file chooser for csv
+        chooseFileButton.addActionListener {
+            bulkOperations = operations.value.BulkAddOperations()
+            openCsvFileChooser()
+        }
+
+
         populateFilesListInSettings()
     }
 
@@ -267,7 +286,7 @@ class CmsMainWindow(private val project: Project) : JDialog() {
     }
 
     private fun populateFilesListInSettings() {
-        // add border to JList
+
         selectedFilesList.border = BorderFactory.createLineBorder(JBColor.GRAY, 1)
         if (isFilesAlreadyAddedInList.not()) {
             fileService.getSelectedFiles().forEach { item ->
@@ -301,20 +320,20 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         txtEnglishContent.margin = JBUI.insets(6)
         txtArabicContent.margin = JBUI.insets(6)
 
-        // Add tab to focus next text area
+
         txtCmsKey.enableTabTraversal(txtEnglishContent)
         txtEnglishContent.enableTabTraversal(txtArabicContent)
 
-        // Add shift + tab to focus reverse
+
         txtArabicContent.enableShiftTabTraversal(txtEnglishContent)
         txtEnglishContent.enableShiftTabTraversal(txtCmsKey)
 
-        // Use default font
+
         txtCmsKey.useAndroidStudioDefaultFont()
         txtEnglishContent.useAndroidStudioDefaultFont()
         txtArabicContent.useAndroidStudioDefaultFont()
 
-        // Add border
+
         txtCmsKey.addBorder()
         txtEnglishContent.addBorder()
         txtArabicContent.addBorder()
@@ -334,7 +353,7 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         }
     }
 
-    // Ui action listeners
+
     private fun handleAddCmsString() {
         // button listener
         addButton.addActionListener {
@@ -352,12 +371,12 @@ class CmsMainWindow(private val project: Project) : JDialog() {
             }
         }
 
-        // insert at line
+
         chkInsertAtLine.addChangeListener {
             showInsertAtLineFeature(chkInsertAtLine.isSelected)
         }
 
-        // insert at line text change listener
+
         txtInsertAtLine.document.addDocumentListener(object : DocumentListener {
             override fun insertUpdate(e: DocumentEvent?) = updateTable()
             override fun removeUpdate(e: DocumentEvent?) = updateTable()
@@ -406,7 +425,6 @@ class CmsMainWindow(private val project: Project) : JDialog() {
             }
         })
 
-        // file change listener for insert at line
         cmbReferenceFile.addActionListener {
             val entries = if (cmbReferenceFile.selectedItem?.toString().equals("English", true)) {
                 viewModel.readJsonAsList(viewModel.getEnglishJsonFile())
@@ -421,7 +439,6 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         }
     }
 
-    // Populate JCombo for file selector for preview 'Insert at line'
     private fun populateInsertAtLineCombo() {
         val items = listOf("English", "Arabic").toTypedArray()
         cmbReferenceFile.model = DefaultComboBoxModel(items)
@@ -445,7 +462,6 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         try {
             val result = mutableListOf<Array<String>>()
 
-            // Add the two lines above (if they exist)
             if (lineNumber > 2) result.add(
                 arrayOf(
                     (lineNumber - 2).toString(),
@@ -461,7 +477,6 @@ class CmsMainWindow(private val project: Project) : JDialog() {
                 )
             )
 
-            // Add the new entry at the specified line number
             result.add(arrayOf(lineNumber.toString(), newKey, newValue))
 
             if (lineNumber < entries.size) result.add(
@@ -500,7 +515,6 @@ class CmsMainWindow(private val project: Project) : JDialog() {
 
         table.model = model
 
-        // Apply the custom renderer to each column for highlighting the newKey, newValue
         val renderer = CustomTableCellRenderer(lineNumber)
         for (i in 0 until table.columnCount) {
             table.columnModel.getColumn(i).cellRenderer = renderer
@@ -522,5 +536,193 @@ class CmsMainWindow(private val project: Project) : JDialog() {
             return component
         }
     }
+
+    private fun showKeySelectionForBulkParse(show: Boolean = false) {
+        if (show) {
+            keySelectionPanel.isVisible = true
+            sepOne.isVisible = true
+            sepTwo.isVisible = true
+        } else {
+            keySelectionPanel.isVisible = false
+            sepOne.isVisible = false
+            sepTwo.isVisible = false
+        }
+    }
+
+    private fun initBulkParseUi(selectedFile: File) {
+        showKeySelectionForBulkParse(true)
+        val tableModel = operations.value.BulkAddOperations().readCsvAsTableModel(selectedFile.path)
+        val csvData = bulkOperations.parseCsvFileToTable(selectedFile, csvTable)
+
+        selectedFile?.let { file ->
+            populateComboBoxesWithKeys(file)
+        }
+
+
+        parseButton.addActionListener {
+            val cmsKeyColumnIndex = cmbCmsKey.selectedIndex
+            val englishColumnIndex = cmbEnglishKey.selectedIndex
+            val arabicColumnIndex = cmbArabicKey.selectedIndex
+
+            bulkOperations.processBulkKeysFromCsv(
+                csvData.drop(1),
+                cmsKeyColumnIndex,
+                englishColumnIndex,
+                arabicColumnIndex,
+                viewModel
+            )
+        }
+    }
+
+
+
+    private fun populateComboBoxesWithKeys(csvFile: File) {
+        try {
+            BufferedReader(FileReader(csvFile)).use { br ->
+                val headerLine = br.readLine()
+
+                if (headerLine != null) {
+                    headers = headerLine.split(",").map { it.trim() }.toMutableList()
+                    csvContent.clear()
+                    originalCmsKeys.addAll(headers)
+                    originalEnglishKeys.addAll(headers)
+                    originalArabicKeys.addAll(headers)
+
+                    resetComboBoxes()
+
+                    br.lines().forEach { line ->
+                        csvContent.add(line.split(",").map { it.trim() })
+                    }
+                }
+            }
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+        }
+    }
+
+    private fun resetComboBoxes() {
+        cmbCmsKey.removeAllItems()
+        cmbEnglishKey.removeAllItems()
+        cmbArabicKey.removeAllItems()
+
+        headers.forEach { header ->
+            cmbCmsKey.addItem(header)
+            cmbEnglishKey.addItem(header)
+            cmbArabicKey.addItem(header)
+        }
+    }
+
+    private fun openCsvFileChooser() {
+        // Create a file chooser
+        val fileChooser = JFileChooser()
+
+        // Set the file filter to allow only CSV files
+        val csvFilter = FileNameExtensionFilter("CSV Files", "csv")
+        fileChooser.fileFilter = csvFilter
+
+        // Set dialog title
+        fileChooser.dialogTitle = "Select a CSV File"
+
+        // Show the dialog; the return value indicates whether the user selected a file
+        val result = fileChooser.showOpenDialog(null)
+
+        // If the user approved the file selection, return the selected file
+        if (result == JFileChooser.APPROVE_OPTION) {
+            initBulkParseUi(fileChooser.selectedFile)
+        } else {
+            null // User canceled the file selection
+        }
+    }
+
+    fun addComboBoxSelectionListeners(
+        cmsComboBox: JComboBox<String>,
+        englishComboBox: JComboBox<String>,
+        arabicComboBox: JComboBox<String>,
+        originalCmsKeys: List<String>,
+        originalEnglishKeys: List<String>,
+        originalArabicKeys: List<String>
+    ) {
+        cmsComboBox.addActionListener {
+            val selectedKey = cmsComboBox.selectedItem as? String ?: return@addActionListener
+            updateComboBoxesAfterSelection(
+                selectedKey,
+                cmsComboBox,
+                englishComboBox,
+                arabicComboBox,
+                originalCmsKeys,
+                originalEnglishKeys,
+                originalArabicKeys
+            )
+        }
+
+        englishComboBox.addActionListener {
+            val selectedKey = englishComboBox.selectedItem as? String ?: return@addActionListener
+            updateComboBoxesAfterSelection(
+                selectedKey,
+                englishComboBox,
+                cmsComboBox,
+                arabicComboBox,
+                originalCmsKeys,
+                originalEnglishKeys,
+                originalArabicKeys
+            )
+        }
+
+        arabicComboBox.addActionListener {
+            val selectedKey = arabicComboBox.selectedItem as? String ?: return@addActionListener
+            updateComboBoxesAfterSelection(
+                selectedKey,
+                arabicComboBox,
+                cmsComboBox,
+                englishComboBox,
+                originalCmsKeys,
+                originalEnglishKeys,
+                originalArabicKeys
+            )
+        }
+    }
+
+
+    private fun updateComboBoxesAfterSelection(
+        selectedKey: String,
+        currentComboBox: JComboBox<String>,
+        comboBox1: JComboBox<String>,
+        comboBox2: JComboBox<String>,
+        originalCmsKeys: List<String>,
+        originalEnglishKeys: List<String>,
+        originalArabicKeys: List<String>
+    ) {
+        // Update CMS ComboBox
+        if (currentComboBox !== comboBox1) {
+            updateComboBox(comboBox1, selectedKey, originalEnglishKeys)
+        }
+        if (currentComboBox !== comboBox2) {
+            updateComboBox(comboBox2, selectedKey, originalArabicKeys)
+        }
+    }
+
+    private fun updateComboBox(comboBox: JComboBox<String>, selectedKey: String, originalKeys: List<String>) {
+        // Restore original keys, except the selected key
+        comboBox.removeAllItems()
+        originalKeys.filter { it != selectedKey }.forEach { comboBox.addItem(it) }
+    }
+
+
+    fun removeSelectedKeyFromComboBox(comboBox: JComboBox<String>, selectedKey: String) {
+        val currentItems = mutableListOf<String>()
+
+        for (i in 0 until comboBox.itemCount) {
+            val item = comboBox.getItemAt(i)
+            if (item != selectedKey) {
+                currentItems.add(item)
+            }
+        }
+
+        comboBox.removeAllItems()
+        currentItems.forEach { comboBox.addItem(it) }
+
+        if (comboBox.itemCount > 0) comboBox.selectedIndex = 0
+    }
+
 }
 

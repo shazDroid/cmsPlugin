@@ -13,7 +13,6 @@ class CustomCellRenderer(private val insertedLineNumber: Int) : DefaultTableCell
     ): Component {
         val component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
 
-        // Check if this row is the inserted row by checking the "Line Number" column
         val lineNumberValue = table.model.getValueAt(row, 0) as Int
         if (lineNumberValue == insertedLineNumber) {
             component.background =  Color(48, 164, 75)

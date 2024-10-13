@@ -10,22 +10,17 @@ import java.io.File
 import java.io.IOException
 
 class FileModifier {
-    // Function to convert camel case to snake case
     fun camelToSnakeCase(input: String): String {
-        // Trim leading and trailing spaces and remove extra spaces between words
         val cleanedInput = input.trim().replace(Regex("\\s+"), " ")
 
-        // If the cleaned input contains spaces, treat it as multiple words
         return if (cleanedInput.contains(" ")) {
-            // Convert multiple words: remove spaces, convert to snake case, and uppercase
             cleanedInput
-                .replace(" ", "")                           // Remove all spaces
-                .replace(Regex("([a-z])([A-Z])"), "$1_$2")  // Convert camel case to snake case
-                .uppercase()                                // Convert to uppercase
+                .replace(" ", "")
+                .replace(Regex("([a-z])([A-Z])"), "$1_$2")
+                .uppercase()
         } else {
-            // For single word: just convert to uppercase
             cleanedInput
-                .replace(Regex("([a-z])([A-Z])"), "$1_$2")  // Convert camel case to snake case
+                .replace(Regex("([a-z])([A-Z])"), "$1_$2")
                 .uppercase()
         }
     }
