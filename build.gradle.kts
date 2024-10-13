@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.shazdroid.cmsgen"
-version = "8.1"
+version = "9"
 
 repositories {
     mavenCentral()
