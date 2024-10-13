@@ -80,6 +80,7 @@ class CmsMainWindow(private val project: Project) : JDialog() {
     val originalArabicKeys = mutableListOf<String>()
     lateinit var bulkOperations: Operations.BulkAddOperations
     lateinit var csvScrollPane: JScrollPane
+    lateinit var developerPanel: JPanel
 
 
     // Settings
