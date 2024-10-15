@@ -1,9 +1,9 @@
 package com.shazdroid.cmsgen.cmsgenerator.viewmodel
 
 data class KeyStatus(
-    val enCount: Int,
-    val arCount: Int,
-    val inCmsKeyMapper: Boolean,
+    var enCount: Int,
+    var arCount: Int,
+    var inCmsKeyMapper: Boolean,
     var isDuplicatedInEn: Boolean,
     var isDuplicatedInAr: Boolean,
     var isMissingInEn: Boolean,

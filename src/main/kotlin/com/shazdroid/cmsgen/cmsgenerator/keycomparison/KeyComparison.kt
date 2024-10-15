@@ -48,7 +48,7 @@ class KeyComparisonTable(
     }
 
     private fun addSearchFunctionality(table: JTable, searchField: JTextField, renderer: KeyColumnRenderer) {
-        // Ensure the table has a row sorter
+
         val rowSorter = table.rowSorter as? TableRowSorter<*> ?: run {
             println("TableRowSorter not found. Assigning a new TableRowSorter.")
             val sorter = TableRowSorter<TableModel>(table.model)
@@ -226,7 +226,6 @@ class KeyComparisonTable(
 
                         val fullKey = currentKey
 
-                        // Increment the count for the key
                         keyOccurrences[fullKey] = keyOccurrences.getOrDefault(fullKey, 0) + 1
                     }
 
@@ -310,11 +309,9 @@ class KeyComparisonTable(
 
             table.model = model
 
-            // Initialize TableRowSorter
             val sorter = TableRowSorter<TableModel>(model)
             table.rowSorter = sorter
 
-            // Apply the custom renderer to the key column
             val keyRenderer = KeyColumnRenderer(keyStatuses)
             table.columnModel.getColumn(0).cellRenderer = keyRenderer
 
@@ -340,23 +337,23 @@ class KeyComparisonTable(
         table.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
                 val point = e.point
-                val row = table.rowAtPoint(point)
+                val viewRow = table.rowAtPoint(point)
                 val column = table.columnAtPoint(point)
 
-                if (row == -1 || column != 0) {
+                if (viewRow == -1 || column != 0) {
                     return
                 }
 
-                val cellRect = table.getCellRect(row, column, false)
-                val rendererComponent = table.getCellRenderer(row, column).getTableCellRendererComponent(
-                    table, table.getValueAt(row, column), false, false, row, column
+                val cellRect = table.getCellRect(viewRow, column, false)
+                val rendererComponent = table.getCellRenderer(viewRow, column).getTableCellRendererComponent(
+                    table, table.getValueAt(viewRow, column), false, false, viewRow, column
                 )
 
                 if (rendererComponent is KeyColumnRenderer) {
 
                     // Calculate badge bounds
                     val badgeBounds = rendererComponent.calculateBadgeBounds(cellRect)
-                    println("Badge bounds for row $row: $badgeBounds")
+                    println("Badge bounds for row $viewRow: $badgeBounds")
 
                     // Adjust badge bounds relative to table coordinates
                     val adjustedBadgeBounds = Rectangle(
@@ -368,7 +365,10 @@ class KeyComparisonTable(
                     println("Adjusted badge bounds: $adjustedBadgeBounds")
 
                     if (adjustedBadgeBounds.contains(e.x, e.y)) {
-                        val key = table.model.getValueAt(row, column) as? String ?: ""
+                        // Convert view row index to model row index
+                        val modelRow = table.convertRowIndexToModel(viewRow)
+
+                        val key = table.model.getValueAt(modelRow, 0) as? String ?: ""
                         println("Badge clicked for key: $key")
                         handleBadgeClick(key, project, table)
                     }
@@ -376,6 +376,7 @@ class KeyComparisonTable(
             }
         })
     }
+
 
 
     fun handleBadgeClick(key: String, project: Project, parentComponent: Component) {
@@ -427,6 +428,9 @@ class KeyComparisonTable(
                             this
                         )
                     }
+                    // Update status and UI after removing duplicates
+                    updateKeyStatusAfterOperation(key)
+                    updateTableRowAfterOperation(key)
                 }
             } else if (status.isMissingInCmsKeyMapper) {
                 val result = Messages.showDialog(
@@ -444,12 +448,63 @@ class KeyComparisonTable(
                     if (cmsKeyFilePath.isNotEmpty()) {
                         val operationResult = fileModifier.appendCmsKeyToFile(cmsKeyFilePath, key, project)
                         if (operationResult == FileModifier.FileOperationResult.SUCCESS) {
-                            // Refresh the table with proper English and Arabic values
-                            val enValue = viewModel.getValueFromFile(viewModel.getEnglishJsonFile(), key)
-                            val arValue = viewModel.getValueFromFile(viewModel.getArabicJsonFile(), key)
-                            updateTableRowWithValues(key, enValue, arValue)
-                            updateKeyStatusAfterOperation(key)
+                            val statusAfterCmsAdd = viewModel.keyStatuses[key]
+                            var enAdded = false
+                            var arAdded = false
+                            var enValue: String? = null
+                            var arValue: String? = null
+
+                            if (statusAfterCmsAdd?.isMissingInEn == true) {
+                                enValue = Messages.showInputDialog(
+                                    project,
+                                    "Enter English value for '$key':",
+                                    "Add English Value",
+                                    Messages.getQuestionIcon()
+                                )
+                                if (!enValue.isNullOrEmpty()) {
+                                    val enFilePath = viewModel.getEnglishJsonFile()?.path ?: ""
+                                    if (enFilePath.isNotEmpty()) {
+                                        val jsonModifier = JsonFileModifier()
+                                        jsonModifier.appendToEnglishJson(enFilePath, key, enValue, project)
+                                        enAdded = true
+                                    }
+                                }
+                            }
+
+                            if (statusAfterCmsAdd?.isMissingInAr == true) {
+                                arValue = Messages.showInputDialog(
+                                    project,
+                                    "Enter Arabic value for '$key':",
+                                    "Add Arabic Value",
+                                    Messages.getQuestionIcon()
+                                )
+                                if (!arValue.isNullOrEmpty()) {
+                                    val arFilePath = viewModel.getArabicJsonFile()?.path ?: ""
+                                    if (arFilePath.isNotEmpty()) {
+                                        val jsonModifier = JsonFileModifier()
+                                        jsonModifier.appendToArabicJson(arFilePath, key, arValue, project)
+                                        arAdded = true
+                                    }
+                                }
+                            }
+
+                            updateKeyStatusAfterOperation(
+                                key,
+                                isEnglishUpdated = enAdded,
+                                isArabicUpdated = arAdded,
+                                cmsAdded = true
+                            )
                             updateTableRowAfterOperation(key, enValue, arValue)
+
+                            Messages.showDialog(
+                                parentComponent,
+                                "Key '$key' added to CmsKeyMapper.kt." +
+                                        if (enAdded || arAdded) " Missing values added to JSON files." else "",
+                                "Success",
+                                arrayOf("OK"),
+                                0,
+                                Messages.getInformationIcon()
+                            )
                         } else {
                             Messages.showDialog(
                                 parentComponent,
@@ -504,7 +559,7 @@ class KeyComparisonTable(
                             "Add English Value",
                             Messages.getQuestionIcon()
                         )
-                        if (enValue != null) {
+                        if (!enValue.isNullOrEmpty()) {
                             jsonModifier.appendToEnglishJson(enFilePath, key, enValue, project)
                             enAdded = true
                         }
@@ -517,14 +572,18 @@ class KeyComparisonTable(
                             "Add Arabic Value",
                             Messages.getQuestionIcon()
                         )
-                        if (arValue != null) {
+                        if (!arValue.isNullOrEmpty()) {
                             jsonModifier.appendToArabicJson(arFilePath, key, arValue, project)
                             arAdded = true
                         }
                     }
 
                     if (enAdded || arAdded) {
-                        updateKeyStatusAfterOperation(key, enAdded, arAdded)
+                        updateKeyStatusAfterOperation(
+                            key,
+                            isEnglishUpdated = enAdded,
+                            isArabicUpdated = arAdded
+                        )
                         updateTableRowAfterOperation(key, enValue, arValue)
                         Messages.showDialog(
                             parentComponent,
@@ -541,23 +600,29 @@ class KeyComparisonTable(
     }
 
 
+
     fun reSortTable() {
         val rowSorter = table.rowSorter as? TableRowSorter<DefaultTableModel> ?: return
         rowSorter.sort()
     }
 
 
-    fun updateTableRowAfterOperation(key: String, enValue: String?, arValue: String?) {
+    fun updateTableRowAfterOperation(key: String, enValue: String? = null, arValue: String? = null) {
         val rowIndex = getRowIndexForKey(key)
         if (rowIndex != -1) {
-            table.model.setValueAt(enValue, rowIndex, 1)
-            table.model.setValueAt(arValue, rowIndex, 2)
+            if (enValue != null) {
+                table.model.setValueAt(enValue, rowIndex, 1)
+            }
+
+            if (arValue != null) {
+                table.model.setValueAt(arValue, rowIndex, 2)
+            }
 
             table.tableChanged(TableModelEvent(table.model, rowIndex))
         }
     }
 
-    fun getRowIndexForKey(key: String): Int {
+    private fun getRowIndexForKey(key: String): Int {
         for (rowIndex in 0 until table.rowCount) {
             val tableKey = table.getValueAt(rowIndex, 0) as? String
             if (tableKey == key) {
@@ -567,38 +632,35 @@ class KeyComparisonTable(
         return -1
     }
 
-    fun updateTableRowWithValues(key: String, enValue: String?, arValue: String?) {
-        val rowIndex = table.model.rowCount - 1
-
-        for (i in 0 until table.model.rowCount) {
-            val tableKey = table.model.getValueAt(i, 0) as? String
-            if (tableKey == key) {
-                table.model.setValueAt(enValue ?: "", i, 1)
-                table.model.setValueAt(arValue ?: "", i, 2)
-
-                (table.model as DefaultTableModel).fireTableRowsUpdated(i, i)
-                break
-            }
-        }
-    }
-
-    fun updateKeyStatusAfterOperation(
+    private fun updateKeyStatusAfterOperation(
         key: String,
         isEnglishUpdated: Boolean = false,
-        isArabicUpdated: Boolean = false
+        isArabicUpdated: Boolean = false,
+        cmsAdded: Boolean = false
     ) {
         val status = viewModel.keyStatuses[key] ?: return
 
+        if (cmsAdded) {
+            status.isMissingInCmsKeyMapper = false
+            status.inCmsKeyMapper = true
+
+            // Recalculate isMissingInEn and isMissingInAr based on the updated inCmsKeyMapper
+            status.isMissingInEn = (status.enCount == 0) && status.inCmsKeyMapper
+            status.isMissingInAr = (status.arCount == 0) && status.inCmsKeyMapper
+        }
+
         if (isEnglishUpdated) {
             status.isMissingInEn = false
+            status.enCount += 1  // Since we've added the value
         }
         if (isArabicUpdated) {
             status.isMissingInAr = false
+            status.arCount += 1  // Since we've added the value
         }
-        status.isMissingInCmsKeyMapper = false
 
         viewModel.keyStatuses[key] = status
     }
+
 
     fun refreshTableData() {
         println("refreshTableData() called")
