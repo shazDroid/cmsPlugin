@@ -20,6 +20,7 @@
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.kotlin</depends>
 
     <!-- Extension points defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
@@ -38,12 +39,36 @@
                     icon="/icons/json.svg"
         />
         <applicationService serviceImplementation="com.shazdroid.cmsgen.cmsgenerator.storage.FileSelectionService"/>
+
+        <projectService serviceInterface="com.shazdroid.cmsgen.cmsgenerator.cms_media_keys.AssetsDirectorySettings"
+                        serviceImplementation="com.shazdroid.cmsgen.cmsgenerator.cms_media_keys.AssetsDirectorySettings"/>
+
+        <projectConfigurable instance="com.shazdroid.cmsgen.cmsgenerator.cms_media_keys.AssetsDirectoryConfigurable"
+                             id="AssetsDirectoryConfigurable"
+                             displayName="Assets Directory"/>
+
+        <codeInsight.lineMarkerProvider language="kotlin"
+                                        implementationClass="com.shazdroid.cmsgen.cmsgenerator.window.MediaKeyLineMarkerProvider"/>
+
+        <toolWindow id="Assets Comparison"
+                    factoryClass="com.shazdroid.cmsgen.cmsgenerator.cms_media_keys.AssetsComparisonToolWindowFactory"
+                    anchor="right"
+                    icon="/icons/asset_manage.svg"
+                    canCloseContents="false"
+        />
     </extensions>
 
 
     <actions>
         <action id="ExtractCmsAction" class="com.shazdroid.cmsgen.cmsgenerator.actions.ExtractCmsAction" text="Extract to CMS String">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+        <action id="com.shazdroid.cmsgen.cmsgenerator.actions.CompareAssetsAction"
+                class="com.shazdroid.cmsgen.cmsgenerator.cms_media_keys.CompareAssetsAction"
+                text="Compare Assets with CmsMediaKeys"
+                icon="/icons/asset_manage.svg"
+                description="Compare assets in the directory with constants defined in CmsMediaKeys.kt">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
     </actions>
 

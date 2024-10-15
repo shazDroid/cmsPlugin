@@ -21,6 +21,7 @@ intellij {
     type.set("IC") // Target IDE Platform
 
     plugins.set(listOf("Kotlin"))
+    plugins.set(listOf("org.jetbrains.kotlin"))
 }
 
 tasks {
@@ -50,6 +51,7 @@ tasks {
 }
 
 dependencies {
+
     implementation("com.fasterxml.jackson.core:jackson-databind:2.13.0")
     implementation ("com.opencsv:opencsv:5.5.2")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.0")
@@ -58,7 +60,7 @@ dependencies {
     implementation("org.jetbrains:annotations:22.0.0")
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
-    implementation("org.jetbrains.kotlin:kotlin-compiler-embeddable")
+    implementation("org.apache.xmlgraphics:batik-all:1.14")
 
 
 }
