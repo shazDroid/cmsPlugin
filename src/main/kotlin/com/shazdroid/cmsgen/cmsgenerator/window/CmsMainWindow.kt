@@ -111,10 +111,9 @@ class CmsMainWindow(private val project: Project) : JDialog() {
     }
 
     private val compareOperations = operations.value.CompareOperations(comparisonTable)
-    private val addOperations = operations.value.AddOperations()
 
-    private val englishEntries = viewModel.readJsonAsList(viewModel.getEnglishJsonFile())
-    private val arabicEntries = viewModel.readJsonAsList(viewModel.getArabicJsonFile())
+    private lateinit var englishEntries: List<Pair<String, String>>
+    private lateinit var arabicEntries: List<Pair<String, String>>
     private var isComparisonDataLoaded = false
 
     private var keyComparisonTable: KeyComparisonTable? = null
@@ -144,6 +143,7 @@ class CmsMainWindow(private val project: Project) : JDialog() {
                 FileModifier.FileOperationResult.SUCCESS -> {
                     keyComparisonTable?.refreshTableData()
                     keyComparisonTable?.refreshTableData()
+                    handleFileSelectionUi()
                 }
 
                 FileModifier.FileOperationResult.FILE_NOT_FOUND -> {
@@ -187,7 +187,12 @@ class CmsMainWindow(private val project: Project) : JDialog() {
         } else {
             fileNotSelectedLabel.isVisible = false
             goToSettingsButton.isVisible = false
+
+            // read json
+            englishEntries = viewModel.readJsonAsList(viewModel.getEnglishJsonFile())
+            arabicEntries = viewModel.readJsonAsList(viewModel.getArabicJsonFile())
         }
+        return
     }
 
 
@@ -256,10 +261,9 @@ class CmsMainWindow(private val project: Project) : JDialog() {
             handleFileSelectionUi()
         }
 
-
+        // Add files
         addFilesButton.addActionListener {
             performFileSelection()
-            handleFileSelectionUi()
         }
 
         // file chooser for csv
@@ -280,10 +284,8 @@ class CmsMainWindow(private val project: Project) : JDialog() {
             isFilesAlreadyAddedInList = false
         } else {
             addFilesButton.isEnabled = false
+            selectedFileModels.removeAllElements()
             populateFilesListInSettings()
-            if (selectedFileModels.contains("No files selected!")) {
-                selectedFileModels.removeElement("No files selected!")
-            }
         }
     }
 
@@ -359,6 +361,13 @@ class CmsMainWindow(private val project: Project) : JDialog() {
     private fun handleAddCmsString() {
         // button listener
         addButton.addActionListener {
+            if (fileService.getSelectedFiles().isEmpty()) {
+                Messages.showInfoMessage(
+                    "File are not selected, please go to settings and select files",
+                    "File Not Selected !"
+                )
+                return@addActionListener
+            }
             if (viewModel.addCmsString(
                     txtCmsKey.text,
                     txtEnglishContent.text,
@@ -562,6 +571,13 @@ class CmsMainWindow(private val project: Project) : JDialog() {
 
 
         parseButton.addActionListener {
+            if (fileService.getSelectedFiles().isEmpty()) {
+                Messages.showInfoMessage(
+                    "File are not selected, please go to settings and select files",
+                    "File Not Selected !"
+                )
+                return@addActionListener
+            }
             val cmsKeyColumnIndex = cmbCmsKey.selectedIndex
             val englishColumnIndex = cmbEnglishKey.selectedIndex
             val arabicColumnIndex = cmbArabicKey.selectedIndex

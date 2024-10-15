@@ -27,10 +27,6 @@ class Operations(
     private val jsonFileModifier: JsonFileModifier,
     private val viewModel: MainViewModel? = null
 ) {
-    val enEntries = viewModel?.readJsonAsList(viewModel.getEnglishJsonFile())
-    val arEntries = viewModel?.readJsonAsList(viewModel.getArabicJsonFile())
-    val cmsKeys = viewModel?.getKeysFromCmsKeyMapper()
-
     inner class AddOperations {
         fun addCmString(
             cmsKey: String,

@@ -47,7 +47,7 @@ class KeyComparisonTable(
         addBadgeClickListener()
     }
 
-    fun addSearchFunctionality(table: JTable, searchField: JTextField, renderer: KeyColumnRenderer) {
+    private fun addSearchFunctionality(table: JTable, searchField: JTextField, renderer: KeyColumnRenderer) {
         // Ensure the table has a row sorter
         val rowSorter = table.rowSorter as? TableRowSorter<*> ?: run {
             println("TableRowSorter not found. Assigning a new TableRowSorter.")
