@@ -150,6 +150,7 @@ class CmsMainWindow(private val project: Project) : JDialog() {
                 FileModifier.FileOperationResult.SUCCESS -> {
                     keyComparisonTable?.refreshTableData()
                     keyComparisonTable?.refreshTableData()
+                    checkFileSelections()
                     handleFileSelectionUi()
                 }
 
@@ -265,6 +266,7 @@ class CmsMainWindow(private val project: Project) : JDialog() {
 
         resetFileSelection.addActionListener {
             clearFileSelection()
+            checkFileSelections()
             handleFileSelectionUi()
         }
 
@@ -288,7 +290,6 @@ class CmsMainWindow(private val project: Project) : JDialog() {
             addFilesButton.isEnabled = true
             selectedFileModels.removeAllElements()
             selectedFileModels.addElement("No files selected !")
-            isFilesAlreadyAddedInList = false
         } else {
             addFilesButton.isEnabled = false
             selectedFileModels.removeAllElements()
