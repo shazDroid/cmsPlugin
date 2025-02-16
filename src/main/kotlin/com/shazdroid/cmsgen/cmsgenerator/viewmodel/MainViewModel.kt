@@ -48,7 +48,7 @@ class MainViewModel(
             // Refresh the file in the VFS
             virtualFile.refresh(false, true)
 
-            FileEditorManager.getInstance(project).openFile(virtualFile, true)
+            //FileEditorManager.getInstance(project).openFile(virtualFile, true)
         }
     }
 

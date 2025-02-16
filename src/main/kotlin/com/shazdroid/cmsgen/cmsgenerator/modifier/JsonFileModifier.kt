@@ -122,7 +122,7 @@ class JsonFileModifier {
         val virtualFile: VirtualFile? = VirtualFileManager.getInstance().findFileByUrl("file://$filePath")
         if (virtualFile != null) {
             virtualFile.refresh(false, true)
-            FileEditorManager.getInstance(project).openFile(virtualFile, true)
+           // FileEditorManager.getInstance(project).openFile(virtualFile, true)
         }
     }
 }
